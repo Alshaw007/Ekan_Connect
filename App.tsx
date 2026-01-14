@@ -52,7 +52,7 @@ const App: React.FC = () => {
       email: data.email,
       handle: `@${data.name.toLowerCase().replace(/\s+/g, '_')}`,
       interests: data.interests,
-      balance: 100.00 // Bonus for joining!
+      balance: 100.00 // Welcome credit
     };
     setUser(newUser);
     setIsLoggedIn(true);
@@ -65,9 +65,11 @@ const App: React.FC = () => {
   };
 
   const updateBalance = (amount: number) => {
-    const updated = { ...user, balance: user.balance + amount };
-    setUser(updated);
-    localStorage.setItem('ekan_user_session', JSON.stringify(updated));
+    setUser(prev => {
+      const updated = { ...prev, balance: prev.balance + amount };
+      localStorage.setItem('ekan_user_session', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const renderModule = () => {
@@ -106,7 +108,6 @@ const App: React.FC = () => {
         }}>
           <div className="max-w-3xl mx-auto h-full border-x border-white/5 bg-[#050505]/40 backdrop-blur-3xl shadow-2xl relative">
             {renderModule()}
-            {/* Real-time Diagnostics HUD Overlay */}
             <div className="absolute top-4 right-4 pointer-events-none z-[100] hidden sm:block">
               <div className="bg-white/5 border border-white/10 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center space-x-2">
                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
