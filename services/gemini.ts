@@ -1,10 +1,10 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const EKANPilotService = {
   async getResponse(prompt: string, context?: string) {
+    // Create instance inside to ensure the latest API key from process.env.API_KEY is used
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -22,6 +22,8 @@ export const EKANPilotService = {
   },
 
   async translateMessage(text: string, targetLang: string = 'English') {
+    // Create instance inside to ensure the latest API key from process.env.API_KEY is used
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',

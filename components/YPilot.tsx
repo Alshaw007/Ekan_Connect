@@ -124,7 +124,6 @@ const YPilot: React.FC = () => {
           <button 
             onClick={() => handleSend()}
             disabled={!input.trim() || isTyping}
-            {/* Fixed: Changed Y_GRADIENT_CSS to EKAN_GRADIENT_CSS */}
             className={`p-4 bg-gradient-to-br ${EKAN_GRADIENT_CSS} rounded-[1.8rem] shadow-xl shadow-gold/10 text-black hover:scale-105 disabled:opacity-50 disabled:scale-100 transition-all`}
           >
             <Send size={24} />

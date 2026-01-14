@@ -33,13 +33,44 @@ export interface Post {
   likes: number;
 }
 
+export interface Story {
+  id: string;
+  content: string; // URL or base64
+  type: 'image' | 'video';
+  timestamp: Date;
+}
+
+export interface UserStory {
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  stories: Story[];
+  hasUnseen: boolean;
+}
+
+export type MessageType = 'text' | 'image' | 'video' | 'file' | 'money';
+
 export interface Message {
   id: string;
   senderId: string;
-  text: string;
+  text?: string;
+  type: MessageType;
+  mediaUrl?: string;
+  fileName?: string;
+  amount?: number;
   timestamp: Date;
   translatedText?: string;
   isVoice?: boolean;
+  status?: 'sent' | 'delivered' | 'read';
+}
+
+export interface ChatThread {
+  id: string;
+  partner: User;
+  lastMessage: string;
+  timestamp: Date;
+  unreadCount: number;
+  online?: boolean;
 }
 
 export interface NewsItem {

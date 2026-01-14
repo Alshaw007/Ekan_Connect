@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   Home, 
@@ -12,6 +13,7 @@ import {
   Mic, 
   MoreHorizontal,
   ChevronRight,
+  ChevronLeft,
   Plus,
   ArrowUpRight,
   ArrowDownLeft,
@@ -23,10 +25,17 @@ import {
   QrCode,
   Scan,
   X,
-  // Fix: Added missing icons required by the Auth component
   ArrowRight,
   Mail,
-  Lock
+  Lock,
+  CheckCheck,
+  Video,
+  FileText,
+  Image as ImageIcon,
+  DollarSign,
+  Camera,
+  PlayCircle,
+  Paperclip
 } from 'lucide-react';
 
 export {
@@ -42,6 +51,7 @@ export {
   Mic, 
   MoreHorizontal,
   ChevronRight,
+  ChevronLeft,
   Plus,
   ArrowUpRight,
   ArrowDownLeft,
@@ -53,8 +63,15 @@ export {
   QrCode,
   Scan,
   X,
-  // Fix: Exporting missing icons to fix import errors in Auth.tsx
   ArrowRight,
   Mail,
-  Lock
+  Lock,
+  CheckCheck,
+  Video,
+  FileText,
+  ImageIcon,
+  DollarSign,
+  Camera,
+  PlayCircle,
+  Paperclip
 };

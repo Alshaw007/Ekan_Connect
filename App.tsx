@@ -75,7 +75,7 @@ const App: React.FC = () => {
       case 'feed':
         return <Feed />;
       case 'chat':
-        return <Chat activePartner={activeChatPartner} />;
+        return <Chat activePartner={activeChatPartner} onUpdateBalance={updateBalance} />;
       case 'gathering':
         return <Gathering onStartChat={handleStartChat} />;
       case 'wallet':
