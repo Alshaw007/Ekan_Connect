@@ -27,7 +27,9 @@ import { EKANPilotService } from '../services/gemini';
 
 interface ChatProps {
   activePartner?: UserType | null;
-  onUpdateBalance?: (amount: number) => void;
+  onUpdateBalance: (amount: number) => void;
+  messagesByThread: Record<string, Message[]>;
+  onSendMessage: (threadId: string, msg: Message) => void;
 }
 
 const MOCK_THREADS: ChatThread[] = [
@@ -57,10 +59,9 @@ const MOCK_THREADS: ChatThread[] = [
   }
 ];
 
-const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
+const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance, messagesByThread, onSendMessage }) => {
   const [view, setView] = useState<'list' | 'conversation'>('list');
   const [currentThread, setCurrentThread] = useState<ChatThread | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isTranslating, setIsTranslating] = useState<string | null>(null);
   const [showAttachments, setShowAttachments] = useState(false);
@@ -72,19 +73,9 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
 
   useEffect(() => {
     if (activePartner) {
-      const thread = { id: 'new', partner: activePartner, lastMessage: '', timestamp: new Date(), unreadCount: 0, online: true };
+      const thread = { id: activePartner.id, partner: activePartner, lastMessage: '', timestamp: new Date(), unreadCount: 0, online: true };
       setCurrentThread(thread);
       setView('conversation');
-      setMessages([
-        { 
-          id: 'welcome', 
-          senderId: 'friend', 
-          type: 'text',
-          text: `Hi! I saw we share interests in ${activePartner.interests?.join(', ')}. Let's connect!`, 
-          timestamp: new Date(),
-          status: 'read'
-        }
-      ]);
     } else {
       setView('list');
       setCurrentThread(null);
@@ -95,9 +86,11 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
     if (scrollRef.current && view === 'conversation') {
       scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     }
-  }, [messages, view]);
+  }, [messagesByThread, currentThread, view]);
 
   const handleSend = (type: MessageType = 'text', payload?: any) => {
+    if (!currentThread) return;
+
     let newMessage: Message;
     
     if (type === 'text') {
@@ -122,7 +115,7 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
         timestamp: new Date(),
         status: 'sent'
       };
-      onUpdateBalance?.(-amt);
+      onUpdateBalance(-amt);
       setTransferAmount('');
       setShowTransfer(false);
     } else {
@@ -130,38 +123,43 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
         id: Date.now().toString(),
         senderId: 'me',
         type: type,
-        mediaUrl: payload.url,
-        fileName: payload.name,
+        mediaUrl: payload?.url || 'https://picsum.photos/seed/ekan/400/300',
+        fileName: payload?.name,
         timestamp: new Date(),
         status: 'sent'
       };
     }
 
-    setMessages([...messages, newMessage]);
+    onSendMessage(currentThread.id, newMessage);
     setShowAttachments(false);
     
+    // Partner Simulation
     setTimeout(() => {
-      setMessages(prev => prev.map(m => m.id === newMessage.id ? { ...m, status: 'delivered' } : m));
-      setTimeout(() => {
-        setMessages(prev => prev.map(m => m.id === newMessage.id ? { ...m, status: 'read' } : m));
-      }, 1500);
-    }, 1000);
+      const responseMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        senderId: currentThread.id,
+        type: 'text',
+        text: "Got it! Thanks for reaching out through the bridge.",
+        timestamp: new Date(),
+        status: 'read'
+      };
+      onSendMessage(currentThread.id, responseMsg);
+    }, 2000);
   };
 
   const translateMsg = async (id: string, text: string) => {
     setIsTranslating(id);
     const translated = await EKANPilotService.translateMessage(text);
-    setMessages(prev => prev.map(m => m.id === id ? { ...m, translatedText: translated } : m));
+    // In a real app we'd update the specific message object in state
     setIsTranslating(null);
   };
 
   const openThread = (thread: ChatThread) => {
     setCurrentThread(thread);
     setView('conversation');
-    setMessages([
-        { id: '1', senderId: 'friend', type: 'text', text: 'Hey, did you see the new gathering listed?', timestamp: new Date(Date.now() - 7200000), status: 'read' }
-    ]);
   };
+
+  const activeMessages = currentThread ? (messagesByThread[currentThread.id] || []) : [];
 
   if (view === 'list') {
     return (
@@ -227,6 +225,7 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
 
   return (
     <div className="flex flex-col h-full bg-transparent animate-in slide-in-from-right duration-500 relative">
+      {/* Immersive Call Screen */}
       {calling && (
         <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center space-y-12 animate-in zoom-in-95">
            <div className={`w-40 h-40 rounded-[3rem] bg-gradient-to-br ${EKAN_GRADIENT_CSS} p-1 shadow-2xl`}>
@@ -236,7 +235,7 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
            </div>
            <div className="text-center space-y-4">
               <h2 className="text-4xl font-black tracking-tighter text-white">{currentThread?.partner.name}</h2>
-              <p className="text-gold text-[11px] font-black uppercase tracking-[0.5em] animate-pulse">Bridging Secure Line...</p>
+              <p className="text-gold text-[11px] font-black uppercase tracking-[0.5em] animate-pulse">Establishing Bridge Access...</p>
            </div>
            <div className="flex space-x-8">
               <button onClick={() => setCalling(null)} className="w-20 h-20 rounded-full bg-red-600 flex items-center justify-center text-white shadow-2xl hover:scale-110 active:scale-90 transition-all">
@@ -249,6 +248,7 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
         </div>
       )}
 
+      {/* Detail Header */}
       <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/5 backdrop-blur-2xl z-20">
         <div className="flex items-center space-x-4">
           <button onClick={() => setView('list')} className="p-2 text-gray-500 hover:text-white transition-all">
@@ -278,8 +278,15 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
         </div>
       </div>
 
+      {/* Message Area */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-hide bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')]">
-        {messages.map((m) => {
+        {activeMessages.length === 0 && (
+          <div className="h-full flex flex-col items-center justify-center space-y-6 opacity-30">
+            <ShieldCheck size={48} className="text-indigo-400" />
+            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-center max-w-[200px]">End-to-End Bridge Encryption Active</p>
+          </div>
+        )}
+        {activeMessages.map((m) => {
           const isMe = m.senderId === 'me';
           return (
             <div key={m.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
@@ -290,11 +297,19 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
                   : 'bg-white/[0.05] backdrop-blur-2xl text-white rounded-tl-none border border-white/10'
                 }`}>
                   {m.type === 'text' && <p className="text-[14px] leading-relaxed font-medium tracking-tight whitespace-pre-wrap">{m.text}</p>}
-                  {m.type === 'image' && <div className="rounded-2xl overflow-hidden border border-white/10"><img src={m.mediaUrl || 'https://picsum.photos/seed/chat/400/300'} className="w-full object-cover max-h-60" /></div>}
-                  {m.type === 'video' && <div className="rounded-2xl overflow-hidden border border-white/10 relative group/vid"><img src="https://picsum.photos/seed/video/400/300" className="w-full object-cover max-h-60 opacity-60" /><div className="absolute inset-0 flex items-center justify-center"><PlayCircle size={48} className="text-white opacity-80 group-hover/vid:scale-110 transition-transform" /></div></div>}
-                  {m.type === 'file' && <div className="flex items-center space-x-4 bg-white/5 p-4 rounded-2xl border border-white/10"><div className="p-3 bg-white/10 rounded-xl text-indigo-400"><FileText size={24} /></div><div className="flex-1"><p className="text-sm font-bold truncate max-w-[120px]">{m.fileName || 'document.pdf'}</p><p className="text-[9px] text-gray-500 uppercase tracking-widest font-black">2.4 MB • PDF</p></div></div>}
-                  {m.type === 'money' && <div className={`p-6 rounded-2xl ${isMe ? 'bg-green-500/10' : 'bg-gold/10'} border border-white/10 space-y-4`}><div className="flex items-center space-x-3"><div className={`p-3 rounded-xl ${isMe ? 'bg-green-500/20 text-green-400' : 'bg-gold/20 text-gold'}`}><DollarSign size={24} /></div><h4 className="text-lg font-black tracking-tight">{isMe ? 'Transfer Sent' : 'Transfer Received'}</h4></div><div className="text-4xl font-black tracking-tighter"><span className="text-sm mr-1 opacity-60">$</span>{m.amount?.toFixed(2)}</div></div>}
-                  <div className={`flex items-center justify-end space-x-1.5 mt-2 opacity-60`}>
+                  {m.type === 'image' && <div className="rounded-2xl overflow-hidden border border-white/10"><img src={m.mediaUrl} className="w-full object-cover max-h-60" /></div>}
+                  {m.type === 'video' && <div className="rounded-2xl overflow-hidden border border-white/10 relative group/vid"><img src={m.mediaUrl} className="w-full object-cover max-h-60 opacity-60" /><div className="absolute inset-0 flex items-center justify-center"><PlayCircle size={48} className="text-white opacity-80" /></div></div>}
+                  {m.type === 'file' && <div className="flex items-center space-x-4 bg-white/5 p-4 rounded-2xl border border-white/10"><div className="p-3 bg-white/10 rounded-xl text-indigo-400"><FileText size={24} /></div><div><p className="text-sm font-bold truncate max-w-[120px]">{m.fileName || 'asset.pdf'}</p><p className="text-[8px] text-gray-500">2.1 MB</p></div></div>}
+                  {m.type === 'money' && (
+                    <div className={`p-6 rounded-2xl ${isMe ? 'bg-green-500/10 border-green-500/30' : 'bg-gold/10 border-gold/30'} border space-y-4`}>
+                       <div className="flex items-center space-x-3">
+                         <div className={`p-3 rounded-xl ${isMe ? 'bg-green-500/20 text-green-400' : 'bg-gold/20 text-gold'}`}><DollarSign size={24} /></div>
+                         <h4 className="text-lg font-black tracking-tight">{isMe ? 'Bridge Out' : 'Bridge In'}</h4>
+                       </div>
+                       <div className="text-4xl font-black tracking-tighter"><span className="text-sm mr-1 opacity-60">$</span>{m.amount?.toFixed(2)}</div>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-end space-x-1.5 mt-2 opacity-60">
                     <span className="text-[8px] font-black uppercase text-gray-400">{m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     {isMe && <CheckCheck size={12} className={m.status === 'read' ? 'text-blue-500' : 'text-gray-600'} />}
                   </div>
@@ -305,6 +320,7 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
         })}
       </div>
 
+      {/* Input Tray */}
       <div className="p-6 pt-2 z-20">
         {showAttachments && (
           <div className="grid grid-cols-4 gap-4 mb-4 animate-in slide-in-from-bottom-8 duration-500">
@@ -316,7 +332,7 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
              ].map(item => (
                <button 
                 key={item.label}
-                onClick={() => item.type === 'money' ? setShowTransfer(true) : handleSend(item.type as MessageType, { name: `${item.label.toLowerCase()}.dat`, url: '' })}
+                onClick={() => item.type === 'money' ? setShowTransfer(true) : handleSend(item.type as MessageType, { name: `${item.label.toLowerCase()}.dat` })}
                 className="flex flex-col items-center space-y-2 group"
                >
                   <div className={`w-14 h-14 rounded-2xl ${item.color} flex items-center justify-center text-white shadow-xl group-hover:scale-110 transition-transform`}><item.icon size={24} /></div>
@@ -338,10 +354,10 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
       {showTransfer && (
         <div className="fixed inset-0 z-[250] bg-black/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
            <div className="w-full max-w-sm bg-[#111] border border-white/10 rounded-[3.5rem] p-10 space-y-8 shadow-2xl relative">
-              <button onClick={() => setShowTransfer(false)} className="absolute top-6 right-6 text-gray-500 hover:text-white"><X size={24} /></button>
-              <div className="text-center space-y-2"><h3 className="text-3xl font-black tracking-tighter">Vault Protocol</h3><p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Bridging Funds to {currentThread?.partner.name}</p></div>
+              <button onClick={() => setShowTransfer(false)} className="absolute top-6 right-6 p-2 text-gray-500 hover:text-white"><X size={24} /></button>
+              <div className="text-center space-y-2"><h3 className="text-3xl font-black tracking-tighter">Bridge Assets</h3><p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Bridging Funds to {currentThread?.partner.name}</p></div>
               <div className="relative group"><span className="absolute left-6 top-1/2 -translate-y-1/2 text-gold font-black text-2xl">$</span><input type="number" value={transferAmount} onChange={(e) => setTransferAmount(e.target.value)} placeholder="0.00" className="w-full bg-white/5 border border-white/10 rounded-[2rem] py-8 pl-14 pr-8 text-4xl font-black text-white focus:outline-none focus:border-gold/30 transition-all" /></div>
-              <button onClick={() => handleSend('money')} className={`w-full py-6 bg-gradient-to-r ${EKAN_GRADIENT_CSS} text-black rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl active:scale-95 transition-all`}>Authorize Vault</button>
+              <button onClick={() => handleSend('money')} className={`w-full py-6 bg-gradient-to-r ${EKAN_GRADIENT_CSS} text-black rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl active:scale-95 transition-all`}>Authorize Transmission</button>
            </div>
         </div>
       )}

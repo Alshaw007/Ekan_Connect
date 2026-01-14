@@ -13,6 +13,7 @@ export interface UserProfile {
   balance: number;
   joinedAt: string;
   isVerified: boolean;
+  trustScore: number; // Unique feature: Grid Trust Score
 }
 
 export interface User {
@@ -31,11 +32,14 @@ export interface Post {
   id: string;
   thumbnail: string;
   likes: number;
+  authorName?: string;
+  content?: string;
+  timestamp: string;
 }
 
 export interface Story {
   id: string;
-  content: string; // URL or base64
+  content: string; 
   type: 'image' | 'video';
   timestamp: Date;
 }
@@ -94,6 +98,15 @@ export interface Event {
   image: string;
   isTicketed: boolean;
   hasGroupChat?: boolean;
+}
+
+export interface GroupVault {
+  id: string;
+  title: string;
+  targetAmount: number;
+  currentAmount: number;
+  contributors: number;
+  deadline: string;
 }
 
 export interface Transaction {

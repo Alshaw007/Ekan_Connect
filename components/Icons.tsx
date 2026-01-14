@@ -35,7 +35,11 @@ import {
   DollarSign,
   Camera,
   PlayCircle,
-  Paperclip
+  Paperclip,
+  CheckCircle2,
+  Fingerprint,
+  Smartphone,
+  MessageSquare
 } from 'lucide-react';
 
 export {
@@ -52,7 +56,7 @@ export {
   MoreHorizontal,
   ChevronRight,
   ChevronLeft,
-  Plus,
+  Plus, 
   ArrowUpRight,
   ArrowDownLeft,
   Settings,
@@ -73,5 +77,9 @@ export {
   DollarSign,
   Camera,
   PlayCircle,
-  Paperclip
+  Paperclip,
+  CheckCircle2,
+  Fingerprint,
+  Smartphone,
+  MessageSquare
 };

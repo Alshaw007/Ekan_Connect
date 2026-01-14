@@ -11,18 +11,20 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ activeModule, setActiveModule, children }) => {
+  // We can simulate localized text based on the user's location here if needed
   const [loc, setLoc] = useState<LocalizationData | null>(null);
 
   useEffect(() => {
+    // In a real app, this would come from a global user state
     setTimeout(() => {
       setLoc({ 
         city: 'Monrovia', 
         country: 'Liberia', 
         language: 'en-LR', 
         flag: '🇱🇷',
-        greeting: 'Welcome to EKAN Social Connect, Sam.'
+        greeting: 'Connected to the Grid.'
       });
-    }, 1000);
+    }, 500);
   }, []);
 
   const navItems: { id: Module; icon: any; label: string }[] = [
@@ -52,7 +54,7 @@ const Layout: React.FC<LayoutProps> = ({ activeModule, setActiveModule, children
         ))}
       </div>
 
-      {/* Top Header - Glass Engine */}
+      {/* Top Header */}
       <header className="flex items-center justify-between px-10 py-6 border-b border-white/5 bg-white/[0.03] backdrop-blur-3xl z-50">
         <div className="flex items-center space-x-6">
             <div 
@@ -63,7 +65,7 @@ const Layout: React.FC<LayoutProps> = ({ activeModule, setActiveModule, children
             </div>
             <div className="hidden sm:flex flex-col">
                 <span className="text-[12px] font-black uppercase tracking-[0.4em] text-gold/90">{loc?.country || 'Detecting...'}</span>
-                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{loc?.city || 'Initializing Node...'}</span>
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{loc?.city || 'Syncing Node...'}</span>
             </div>
         </div>
         
@@ -103,7 +105,6 @@ const Layout: React.FC<LayoutProps> = ({ activeModule, setActiveModule, children
       {/* Bottom Nav OS-style Floating Dock */}
       <div className="px-8 pb-10 pt-4 z-50">
         <nav className="flex justify-around items-center py-5 px-6 bg-white/[0.03] backdrop-blur-[40px] border border-white/10 rounded-[3rem] shadow-[0_30px_60px_rgba(0,0,0,0.6)] relative overflow-hidden">
-          {/* Subtle reflection line */}
           <div className="absolute top-0 left-[10%] right-[10%] h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
           
           {navItems.map((item) => {
@@ -119,7 +120,6 @@ const Layout: React.FC<LayoutProps> = ({ activeModule, setActiveModule, children
               >
                 <div className={`p-4 rounded-[1.4rem] transition-all duration-700 relative ${isActive ? `bg-gradient-to-br ${EKAN_GRADIENT_CSS} shadow-[0_15px_40px_-5px_rgba(206,17,38,0.5)] scale-110` : 'hover:bg-white/5 hover:scale-105'}`}>
                   <Icon size={24} className={isActive ? 'stroke-[3px] text-black' : 'stroke-[1.5px] group-hover:scale-110 transition-transform duration-500'} />
-                  {isActive && <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-black rounded-full opacity-30"></div>}
                 </div>
                 <span className={`text-[10px] font-black tracking-[0.4em] uppercase transition-all duration-700 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-40 translate-y-1 scale-90'}`}>
                   {item.label}
@@ -129,17 +129,6 @@ const Layout: React.FC<LayoutProps> = ({ activeModule, setActiveModule, children
           })}
         </nav>
       </div>
-      
-      <style>{`
-        @keyframes shake {
-          0%, 100% { transform: rotate(0); }
-          25% { transform: rotate(10deg); }
-          75% { transform: rotate(-10deg); }
-        }
-        .group-hover\\:shake:hover {
-          animation: shake 0.5s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 };
