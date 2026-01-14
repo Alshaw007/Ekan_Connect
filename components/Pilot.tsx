@@ -1,12 +1,12 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, Send, Mic, MoreHorizontal, ShieldCheck, Globe, Search } from './Icons';
-import { COLORS, EKAN_GRADIENT_CSS } from '../constants';
+import { Sparkles, Send, Mic, MoreHorizontal, ShieldCheck, Globe, Search, ArrowRight } from './Icons';
+import { EKAN_GRADIENT_CSS } from '../constants';
 import { EKANPilotService } from '../services/gemini';
 
 const Pilot: React.FC = () => {
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; text: string }[]>([
-    { role: 'assistant', text: "Systems online. I'm EKAN-Pilot, your Digital Concierge. I've analyzed your local node in Monrovia. I can help bridge the language gap, summarize the global feed, or secure your gathering passes. What can I help you bridge today?" }
+    { role: 'assistant', text: "EKAN-Pilot active. I've successfully synchronized with your regional node. I can provide factual analytics on your Grid Trust Score, translate Bridge transmissions in 100+ languages, or verify Marketplace manifests for protocol safety. What shall we bridge today?" }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -26,113 +26,115 @@ const Pilot: React.FC = () => {
     setMessages(prev => [...prev, { role: 'user', text: textToSend }]);
     
     setIsTyping(true);
+    // Real-world AI call using Gemini API
     const aiResponse = await EKANPilotService.getResponse(textToSend);
     setMessages(prev => [...prev, { role: 'assistant', text: aiResponse }]);
     setIsTyping(false);
   };
 
-  const actions = [
-    { label: "Morning Feed Summary", icon: Sparkles, color: "text-gold" },
-    { label: "Verify Ticket Safety", icon: ShieldCheck, color: "text-green-500" },
-    { label: "Translate to Mandarin", icon: Globe, color: "text-blue-500" },
-    { label: "Find Local Experts", icon: Search, color: "text-red-500" }
+  const actionableCommands = [
+    { label: "Summarize Feed", icon: Sparkles, color: "text-gold" },
+    { label: "Market Safety Check", icon: ShieldCheck, color: "text-green-500" },
+    { label: "Translate Chat", icon: Globe, color: "text-blue-500" },
+    { label: "Find Opportunities", icon: Search, color: "text-red-500" }
   ];
 
   return (
-    <div className="flex flex-col h-full relative overflow-hidden bg-[#050505]/40">
-      {/* Immersive background decoration */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] bg-indigo-600/5 blur-[120px] rounded-full"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-gold/5 blur-[120px] rounded-full"></div>
+    <div className="flex flex-col h-full relative overflow-hidden bg-[#050505]/60 pb-28">
+      {/* Grid Pulse Decoration */}
+      <div className="absolute inset-0 pointer-events-none opacity-20 z-0">
+        <div className="absolute top-[10%] left-[10%] w-[300px] h-[300px] bg-indigo-600/10 blur-[100px] rounded-full animate-pulse"></div>
+        <div className="absolute bottom-[20%] right-[10%] w-[400px] h-[400px] bg-gold/5 blur-[120px] rounded-full animate-pulse [animation-delay:2s]"></div>
       </div>
 
-      {/* Header */}
-      <div className="p-8 border-b border-white/10 bg-white/5 backdrop-blur-3xl z-10 flex items-center justify-between">
-        <div className="flex items-center space-x-5">
-            <div className={`w-16 h-16 bg-gradient-to-br ${EKAN_GRADIENT_CSS} rounded-3xl flex items-center justify-center shadow-[0_10px_30px_rgba(206,17,38,0.2)] group cursor-pointer`}>
+      {/* Header OS-Style */}
+      <div className="p-10 border-b border-white/10 bg-white/5 backdrop-blur-3xl z-10 flex items-center justify-between shadow-2xl">
+        <div className="flex items-center space-x-6">
+            <div className={`w-16 h-16 bg-gradient-to-br ${EKAN_GRADIENT_CSS} rounded-[2rem] flex items-center justify-center shadow-3xl group cursor-pointer active:scale-95 transition-all`}>
                 <Sparkles size={32} className="text-black group-hover:rotate-12 transition-transform duration-500" />
             </div>
             <div>
-                <h1 className="text-3xl font-black tracking-tighter">EKAN-Pilot</h1>
-                <div className="flex items-center space-x-3 mt-1">
-                    <div className="text-[10px] font-black uppercase tracking-[0.4em] text-gold/80">Quantum Intelligence Agent</div>
+                <h1 className="text-3xl font-black tracking-tighter text-white">EKAN-Pilot</h1>
+                <div className="flex items-center space-x-3 mt-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-[0.5em] text-gold/80">Quantum Concierge Agent</span>
                     <div className="flex space-x-1">
-                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse [animation-delay:0.2s]"></div>
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse [animation-delay:0.3s]"></div>
                     </div>
                 </div>
             </div>
         </div>
-        <button className="p-4 bg-white/5 rounded-2xl text-gray-400 hover:text-white border border-white/10 transition-all"><MoreHorizontal size={24} /></button>
+        <button className="p-4 bg-white/5 border border-white/10 rounded-2xl text-gray-500 hover:text-white transition-all"><MoreHorizontal size={24} /></button>
       </div>
 
-      {/* Chat Area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 space-y-10 z-10 scrollbar-hide">
+      {/* Transmission History */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-10 space-y-12 z-10 scrollbar-hide">
         {messages.map((m, i) => (
-          <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-6 duration-500`}>
-            <div className={`max-w-[85%] p-8 rounded-[3rem] shadow-2xl relative ${
+          <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-6 duration-700`}>
+            <div className={`max-w-[85%] p-8 rounded-[3.5rem] shadow-3xl relative border overflow-hidden ${
               m.role === 'user' 
-              ? 'bg-white/10 text-white rounded-tr-none border border-white/20' 
-              : 'bg-indigo-900/30 text-white rounded-tl-none border border-indigo-500/20 backdrop-blur-3xl'
+              ? 'bg-white/10 text-white rounded-tr-none border-white/20' 
+              : 'bg-indigo-900/20 text-white rounded-tl-none border-indigo-500/20 backdrop-blur-3xl'
             }`}>
-              <p className="text-[17px] leading-relaxed font-medium tracking-tight whitespace-pre-wrap">{m.text}</p>
+              {m.role === 'assistant' && <div className="absolute top-0 right-0 p-4 opacity-5"><Sparkles size={64} /></div>}
+              <p className="text-[17px] leading-relaxed font-medium tracking-tight whitespace-pre-wrap relative z-10">{m.text}</p>
               {m.role === 'assistant' && (
-                  <div className="mt-6 pt-6 border-t border-white/5 flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-black text-gold">E</div>
-                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-300">EKAN CORE VERIFIED</span>
+                  <div className="mt-8 pt-8 border-t border-white/5 flex items-center justify-between relative z-10">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-[11px] font-black text-gold">E</div>
+                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-300">ACTUAL & FACTUAL VERIFIED</span>
                       </div>
-                      <ShieldCheck size={16} className="text-green-500 opacity-60" />
+                      <ShieldCheck size={20} className="text-green-500 opacity-50" />
                   </div>
               )}
             </div>
           </div>
         ))}
         {isTyping && (
-          <div className="flex justify-start animate-in fade-in duration-300">
-             <div className="bg-white/5 backdrop-blur-xl px-10 py-6 rounded-[2.5rem] border border-white/10 flex items-center space-x-4 shadow-xl">
-                <div className="flex space-x-2">
-                  <div className="w-2 h-2 bg-gold rounded-full animate-bounce [animation-duration:1s]"></div>
-                  <div className="w-2 h-2 bg-gold rounded-full animate-bounce [animation-duration:1s] [animation-delay:0.2s]"></div>
-                  <div className="w-2 h-2 bg-gold rounded-full animate-bounce [animation-duration:1s] [animation-delay:0.4s]"></div>
+          <div className="flex justify-start animate-in fade-in duration-500">
+             <div className="bg-white/5 backdrop-blur-2xl px-12 py-7 rounded-[3rem] border border-white/10 flex items-center space-x-5 shadow-2xl">
+                <div className="flex space-x-2.5">
+                  <div className="w-2.5 h-2.5 bg-gold rounded-full animate-bounce [animation-duration:0.8s]"></div>
+                  <div className="w-2.5 h-2.5 bg-gold rounded-full animate-bounce [animation-duration:0.8s] [animation-delay:0.2s]"></div>
+                  <div className="w-2.5 h-2.5 bg-gold rounded-full animate-bounce [animation-duration:0.8s] [animation-delay:0.4s]"></div>
                 </div>
-                <span className="text-[11px] font-black uppercase tracking-[0.4em] text-gray-500">Pilot is processing nodes...</span>
+                <span className="text-[11px] font-black uppercase tracking-[0.5em] text-gray-500">Pilot is bridging nodes...</span>
              </div>
           </div>
         )}
       </div>
 
-      {/* Control Tray */}
-      <div className="p-8 pt-0 z-10 space-y-6">
-        <div className="flex space-x-3 overflow-x-auto scrollbar-hide py-3">
-            {actions.map(action => (
+      {/* Control Module */}
+      <div className="p-10 pt-0 z-10 space-y-8">
+        <div className="flex space-x-4 overflow-x-auto scrollbar-hide py-4 px-2">
+            {actionableCommands.map(cmd => (
                 <button 
-                    key={action.label}
-                    onClick={() => handleSend(action.label)}
-                    className="flex items-center space-x-3 px-8 py-4 bg-white/5 border border-white/10 rounded-full text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-white hover:bg-white/10 hover:border-gold/30 transition-all whitespace-nowrap shadow-2xl active:scale-95"
+                    key={cmd.label}
+                    onClick={() => handleSend(cmd.label)}
+                    className="flex items-center space-x-4 px-8 py-5 bg-white/5 border border-white/10 rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 hover:text-white hover:bg-white/10 hover:border-gold/30 transition-all whitespace-nowrap shadow-xl active:scale-95"
                 >
-                    <action.icon size={18} className={action.color} />
-                    <span>{action.label}</span>
+                    <cmd.icon size={20} className={cmd.color} />
+                    <span>{cmd.label}</span>
                 </button>
             ))}
         </div>
 
-        <div className="bg-white/5 backdrop-blur-3xl p-3 rounded-[3.5rem] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.5)] flex items-center space-x-3 group focus-within:border-gold/30 transition-all duration-500">
-          <button className="p-6 text-gray-500 hover:text-gold transition-colors hover:scale-110"><Mic size={30} /></button>
+        <div className="bg-white/5 backdrop-blur-[50px] p-4 rounded-[4rem] border border-white/10 shadow-[0_30px_70px_rgba(0,0,0,0.7)] flex items-center space-x-4 group focus-within:border-gold/30 transition-all duration-700">
+          <button className="p-7 text-gray-500 hover:text-gold transition-all hover:scale-110"><Mic size={32} /></button>
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Issue a global command..."
-            className="flex-1 bg-transparent px-3 py-4 text-lg font-medium focus:outline-none placeholder:text-gray-700 tracking-tight"
+            placeholder="Talk to your Digital Concierge..."
+            className="flex-1 bg-transparent px-4 py-5 text-xl font-medium focus:outline-none placeholder:text-gray-800 tracking-tight"
           />
           <button 
             onClick={() => handleSend()}
             disabled={!input.trim() || isTyping}
-            className={`p-6 bg-gradient-to-br ${EKAN_GRADIENT_CSS} rounded-[2.8rem] shadow-[0_10px_30px_rgba(206,17,38,0.3)] text-black hover:scale-105 active:scale-95 disabled:opacity-30 disabled:grayscale transition-all duration-300`}
+            className={`p-7 bg-gradient-to-br ${EKAN_GRADIENT_CSS} rounded-[3rem] shadow-3xl text-black hover:scale-105 active:scale-95 disabled:opacity-20 disabled:grayscale transition-all duration-500`}
           >
-            <Send size={30} className="fill-current" />
+            <Send size={32} className="fill-current" />
           </button>
         </div>
       </div>

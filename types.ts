@@ -13,7 +13,7 @@ export interface UserProfile {
   balance: number;
   joinedAt: string;
   isVerified: boolean;
-  trustScore: number; // Unique feature: Grid Trust Score
+  trustScore: number; 
 }
 
 export interface User {
@@ -35,21 +35,6 @@ export interface Post {
   authorName?: string;
   content?: string;
   timestamp: string;
-}
-
-export interface Story {
-  id: string;
-  content: string; 
-  type: 'image' | 'video';
-  timestamp: Date;
-}
-
-export interface UserStory {
-  userId: string;
-  userName: string;
-  userAvatar: string;
-  stories: Story[];
-  hasUnseen: boolean;
 }
 
 export type MessageType = 'text' | 'image' | 'video' | 'file' | 'money';
