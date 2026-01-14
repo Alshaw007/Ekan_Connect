@@ -17,13 +17,13 @@ const INITIAL_USER: UserProfile = {
   email: '',
   handle: '',
   avatar: 'https://picsum.photos/seed/ekan_user/200/200',
-  location: 'Detecting...',
+  location: 'Detecting Node...',
   bio: 'Digital Native on the Pan-African Grid.',
   interests: [],
   balance: 0.00,
   joinedAt: new Date().toISOString(),
   isVerified: true,
-  trustScore: 95
+  trustScore: 98
 };
 
 const App: React.FC = () => {
@@ -32,21 +32,19 @@ const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile>(INITIAL_USER);
   const [activeChatPartner, setActiveChatPartner] = useState<UserType | null>(null);
 
-  // Global Mock Persistence Layer
   const [posts, setPosts] = useState<Post[]>([]);
   const [messagesByThread, setMessagesByThread] = useState<Record<string, Message[]>>({});
   const [friends, setFriends] = useState<UserType[]>([]);
 
-  // Hydrate from LocalStorage (Simulating a real session fetch)
   useEffect(() => {
-    const saved = localStorage.getItem('ekan_user_session');
+    const saved = localStorage.getItem('ekan_user_session_v3');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         setUser(parsed);
         setIsLoggedIn(true);
       } catch (e) {
-        console.error("Diagnostic Error: Session corrupted");
+        console.error("Diagnostic Error: Manifest corrupted. Resetting.");
       }
     }
   }, []);
@@ -59,17 +57,17 @@ const App: React.FC = () => {
       location: data.location,
       handle: `@${data.name.toLowerCase().replace(/\s+/g, '_')}`,
       interests: data.interests,
-      balance: 1000.00 // Promotional Early Manifestation Credit
+      balance: 1500.00 // Promotion: Early Bridge Adopter Credit
     };
     setUser(newUser);
     setIsLoggedIn(true);
-    localStorage.setItem('ekan_user_session', JSON.stringify(newUser));
+    localStorage.setItem('ekan_user_session_v3', JSON.stringify(newUser));
   };
 
   const updateBalance = (amount: number) => {
     setUser(prev => {
       const updated = { ...prev, balance: Math.max(0, prev.balance + amount) };
-      localStorage.setItem('ekan_user_session', JSON.stringify(updated));
+      localStorage.setItem('ekan_user_session_v3', JSON.stringify(updated));
       return updated;
     });
   };
@@ -124,7 +122,7 @@ const App: React.FC = () => {
         return <Pilot />;
       case 'profile':
         return <Profile user={user} onLogout={() => {
-          localStorage.removeItem('ekan_user_session');
+          localStorage.removeItem('ekan_user_session_v3');
           setIsLoggedIn(false);
           setUser(INITIAL_USER);
         }} />;
@@ -147,13 +145,16 @@ const App: React.FC = () => {
           if (m !== 'chat') setActiveChatPartner(null);
           setActiveModule(m);
         }}>
-          <div className="max-w-3xl mx-auto h-full border-x border-white/5 bg-[#050505]/40 backdrop-blur-3xl shadow-2xl relative">
+          <div className="max-w-4xl mx-auto h-full border-x border-white/5 bg-[#050505]/60 backdrop-blur-[50px] shadow-[0_50px_100px_rgba(0,0,0,0.9)] relative overflow-hidden">
             {renderModule()}
-            {/* Immersive Performance HUD */}
-            <div className="absolute top-4 right-4 pointer-events-none z-[100] hidden sm:block">
-              <div className="bg-white/5 border border-white/10 backdrop-blur-md px-4 py-2 rounded-full flex items-center space-x-3">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
-                <span className="text-[8px] font-black uppercase tracking-[0.4em] text-gray-400">Diag: Bridge Online • {user.location}</span>
+            {/* Grid Performance HUD */}
+            <div className="absolute top-6 right-8 pointer-events-none z-[100] hidden md:block">
+              <div className="bg-white/5 border border-white/10 backdrop-blur-2xl px-6 py-2.5 rounded-full flex items-center space-x-4 shadow-2xl">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_12px_rgba(34,197,94,0.8)]"></div>
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-black uppercase tracking-[0.5em] text-white">Grid Online</span>
+                  <span className="text-[7px] font-bold text-gray-500 uppercase tracking-widest">{user.location} • Node 14-X</span>
+                </div>
               </div>
             </div>
           </div>
