@@ -1,0 +1,9 @@
+{
+  "name": "EKAN Social Connect",
+  "description": "A premium Pan-African super-app featuring social discovery, microblogging, high-performance fintech, and secure event management.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
