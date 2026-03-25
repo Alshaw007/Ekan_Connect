@@ -1,5 +1,5 @@
 
-export type Module = 'feed' | 'chat' | 'gathering' | 'wallet' | 'pilot' | 'profile' | 'scanner' | 'utilities';
+export type Module = 'feed' | 'chat' | 'gathering' | 'wallet' | 'pilot' | 'profile' | 'scanner' | 'utilities' | 'communities' | 'stories';
 
 export type UserRole = 'user' | 'admin';
 
@@ -21,6 +21,34 @@ export interface UserProfile {
   learningLanguages?: string[];
   following?: string[];
   followers?: string[];
+  contacts?: string[]; // Synced contacts (phone numbers or emails)
+}
+
+export interface Community {
+  id: string;
+  name: string;
+  description: string;
+  avatar: string;
+  banner?: string;
+  members: string[]; // UIDs
+  admins: string[]; // UIDs
+  type: 'public' | 'private';
+  category: string;
+  createdAt: string;
+  managedByPilot?: boolean;
+}
+
+export interface Story {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  mediaUrl: string;
+  mediaType: 'image' | 'video';
+  caption?: string;
+  timestamp: string;
+  expiresAt: string;
+  viewers: string[]; // UIDs
 }
 
 export interface User {
@@ -54,6 +82,8 @@ export type MessageType = 'text' | 'image' | 'video' | 'file' | 'money';
 export interface Message {
   id: string;
   senderId: string;
+  senderName?: string;
+  senderAvatar?: string;
   receiverId: string;
   text?: string;
   type: MessageType;
@@ -68,7 +98,7 @@ export interface Message {
 
 export interface ChatThread {
   id: string;
-  partner: User;
+  partner: User | Community;
   lastMessage: string;
   timestamp: string;
   unreadCount: number;

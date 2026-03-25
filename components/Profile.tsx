@@ -1,8 +1,10 @@
 
 import React, { useState } from 'react';
-import { Settings, ShieldCheck, MoreHorizontal, MessageCircle, Phone, Globe, Star, QrCode, X, Lock } from './Icons';
+import { Settings, ShieldCheck, MoreHorizontal, MessageCircle, Phone, Globe, Star, QrCode, X, Lock, UserPlus, Users } from './Icons';
 import { EKAN_GRADIENT_CSS } from '../constants';
 import { Post, UserProfile } from '../types';
+import { db, auth, handleFirestoreError, OperationType } from '../firebase';
+import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 
 // Fix: Added missing timestamp property to MOCK_POSTS to satisfy Post interface requirements
 const MOCK_POSTS: Post[] = [
@@ -22,6 +24,26 @@ interface ProfileProps {
 
 const Profile: React.FC<ProfileProps> = ({ user, posts, onLogout }) => {
   const [showQr, setShowQr] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSyncContacts = async () => {
+    setIsSyncing(true);
+    // Simulate contact sync
+    setTimeout(async () => {
+      if (auth.currentUser) {
+        try {
+          const ref = doc(db, 'users', auth.currentUser.uid);
+          await updateDoc(ref, {
+            contacts: arrayUnion('contact_1', 'contact_2', 'contact_3') // Simulated contact IDs
+          });
+          alert('Contacts Synchronized with the Grid.');
+        } catch (error) {
+          handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser.uid}`);
+        }
+      }
+      setIsSyncing(false);
+    }, 2000);
+  };
 
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-1000 overflow-y-auto scrollbar-hide pb-24">
@@ -39,6 +61,14 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, onLogout }) => {
             </div>
             <div className="flex space-x-3">
                 <button 
+                  onClick={handleSyncContacts}
+                  disabled={isSyncing}
+                  className={`p-4 bg-white/5 rounded-2xl text-gold hover:text-white transition-all border border-white/5 ${isSyncing ? 'animate-pulse' : ''}`}
+                  title="Sync Contacts"
+                >
+                  <Users size={22} />
+                </button>
+                <button 
                   onClick={() => setShowQr(true)}
                   className="p-4 bg-white/5 rounded-2xl text-gold hover:text-white transition-all border border-white/5"
                 >
@@ -51,9 +81,21 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, onLogout }) => {
         </div>
 
         <div className="space-y-4">
-            <div>
-                <h1 className="text-4xl font-black tracking-tighter text-white">{user.name}</h1>
-                <p className="text-gold text-[11px] font-black uppercase tracking-[0.4em] mt-1">{user.handle} • {user.location}</p>
+            <div className="flex justify-between items-end">
+                <div>
+                    <h1 className="text-4xl font-black tracking-tighter text-white">{user.name}</h1>
+                    <p className="text-gold text-[11px] font-black uppercase tracking-[0.4em] mt-1">{user.handle} • {user.location}</p>
+                </div>
+                <div className="flex space-x-6">
+                    <div className="text-center">
+                        <p className="text-xl font-black text-white">{user.followers?.length || 0}</p>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-gray-600">Followers</p>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-xl font-black text-white">{user.following?.length || 0}</p>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-gray-600">Following</p>
+                    </div>
+                </div>
             </div>
             
             <p className="text-sm text-gray-400 font-medium leading-relaxed max-w-sm">

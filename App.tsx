@@ -9,9 +9,11 @@ import Pilot from './components/Pilot';
 import Profile from './components/Profile';
 import Scanner from './components/Scanner';
 import Utilities from './components/Utilities';
+import Communities from './components/Communities';
+import Stories from './components/Stories';
 import Auth from './components/Auth';
 import { FirebaseProvider, useFirebase, ErrorBoundary } from './components/FirebaseProvider';
-import { Module, User as UserType, UserProfile, Post, Message } from './types';
+import { Module, User as UserType, UserProfile, Post, Message, Community } from './types';
 import { auth, db, handleFirestoreError, OperationType } from './firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, doc, setDoc, getDoc, arrayUnion, arrayRemove, serverTimestamp } from 'firebase/firestore';
 
@@ -34,7 +36,7 @@ const INITIAL_USER: UserProfile = {
 const AppContent: React.FC = () => {
   const { user: authUser, profile, loading, isAuthReady } = useFirebase();
   const [activeModule, setActiveModule] = useState<Module>('feed');
-  const [activeChatPartner, setActiveChatPartner] = useState<UserType | null>(null);
+  const [activeChatPartner, setActiveChatPartner] = useState<UserType | Community | null>(null);
 
   // Real-time Data State
   const [posts, setPosts] = useState<Post[]>([]);
@@ -220,13 +222,17 @@ const AppContent: React.FC = () => {
         return (
           <Gathering 
             users={friends}
-            onStartChat={(u) => { setActiveChatPartner(u); setActiveModule('chat'); }} 
+            onStartChat={(partner) => { setActiveChatPartner(partner); setActiveModule('chat'); }} 
           />
         );
       case 'wallet':
         return <Wallet balance={profile.balance} onAddFunds={updateBalance} />;
       case 'utilities':
         return <Utilities balance={profile.balance} onProcessPayment={(amt, desc) => updateBalance(-amt, desc)} />;
+      case 'communities':
+        return <Communities onStartChat={(partner) => { setActiveChatPartner(partner); setActiveModule('chat'); }} />;
+      case 'stories':
+        return <Stories />;
       case 'pilot':
         return <Pilot />;
       case 'profile':

@@ -15,17 +15,18 @@ import {
   DollarSign,
   PlayCircle,
   Paperclip,
-  X
+  X,
+  Sparkles
 } from './Icons';
 import { EKAN_GRADIENT_CSS } from '../constants';
-import { Message, User as UserType, ChatThread, MessageType } from '../types';
+import { Message, User as UserType, ChatThread, MessageType, Community } from '../types';
 import { EKANPilotService } from '../services/gemini';
 import { useFirebase } from './FirebaseProvider';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, setDoc, getDoc, where, limit } from 'firebase/firestore';
 
 interface ChatProps {
-  activePartner?: UserType | null;
+  activePartner?: UserType | Community | null;
   onUpdateBalance: (amount: number, description?: string) => void;
   messagesByThread?: any;
   onSendMessage?: (threadId: string, msg: Message) => Promise<void>;
@@ -42,12 +43,37 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
   const [calling, setCalling] = useState<'audio' | 'video' | null>(null);
   const [transferAmount, setTransferAmount] = useState('');
   const [showTransfer, setShowTransfer] = useState(false);
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [showStickers, setShowStickers] = useState(false);
   
+  const emojis = ['😀', '😂', '😍', '🤔', '🔥', '🙌', '✨', '🌍', '🇳🇬', '🇬🇭', '🇱🇷', '🇿🇦', '🇰🇪', '🇪🇬', '🇲🇦', '🇸🇳'];
+  const stickers = [
+    'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Y4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1z/3o7TKv9QWQI2Z9zZ9u/giphy.gif',
+    'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Y4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1z/l0HlTy9x7F8O8X0qY/giphy.gif',
+    'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Y4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1z/3o7TKVUn7iM8FMEU24/giphy.gif',
+    'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Y4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1z/3o7TKv9QWQI2Z9zZ9u/giphy.gif',
+    'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Y4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1z/3o7TKv9QWQI2Z9zZ9u/giphy.gif',
+    'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Y4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1z/3o7TKv9QWQI2Z9zZ9u/giphy.gif'
+  ];
+
+  const handleEmojiClick = (emoji: string) => {
+    setInputValue(prev => prev + emoji);
+    setShowEmoji(false);
+  };
+
+  const handleStickerClick = (stickerUrl: string) => {
+    handleSend('image', { mediaUrl: stickerUrl });
+    setShowStickers(false);
+  };
+
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Helper to get deterministic chatId
-  const getChatId = (uid1: string, uid2: string) => {
-    return [uid1, uid2].sort().join('_');
+  const getChatId = (uid1: string, partner: UserType | Community) => {
+    if ('members' in partner) { // It's a community
+      return partner.id;
+    }
+    return [uid1, partner.id].sort().join('_');
   };
 
   // Sync Threads (for the list view)
@@ -63,7 +89,7 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
         .filter(u => u.id !== authUser.uid);
       
       const generatedThreads: ChatThread[] = otherUsers.map(u => ({
-        id: getChatId(authUser.uid, u.id),
+        id: getChatId(authUser.uid, u),
         partner: u,
         lastMessage: 'Tap to start bridging...',
         timestamp: new Date().toISOString(),
@@ -106,7 +132,7 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
   useEffect(() => {
     if (activePartner && authUser) {
       const thread: ChatThread = { 
-        id: getChatId(authUser.uid, activePartner.id), 
+        id: getChatId(authUser.uid, activePartner), 
         partner: activePartner, 
         lastMessage: '', 
         timestamp: new Date().toISOString(), 
@@ -142,9 +168,12 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
 
   const handleSend = async (type: MessageType = 'text', payload?: any) => {
     if (!currentThread || !authUser || !profile) return;
+    setShowEmoji(false);
 
     let newMessageData: any = {
       senderId: authUser.uid,
+      senderName: profile.name,
+      senderAvatar: profile.avatar,
       type,
       timestamp: serverTimestamp(),
       status: 'sent'
@@ -177,10 +206,17 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
       // AI Simulation: Partner auto-replies using the Gemini service
       if (type === 'text') {
         setTimeout(async () => {
-          const prompt = `You are ${currentThread.partner.name} responding to a friend named ${profile.name}. They just sent: "${newMessageData.text}". Give a friendly, cultural, and professional reply. Keep it under 25 words.`;
+          const isCommunity = 'members' in currentThread.partner;
+          const partnerName = currentThread.partner.name;
+          const prompt = isCommunity 
+            ? `You are the AI Pilot for the community "${partnerName}". A member named ${profile.name} just posted: "${newMessageData.text}". Give a helpful, community-focused, and culturally relevant reply. Keep it under 25 words.`
+            : `You are ${partnerName} responding to a friend named ${profile.name}. They just sent: "${newMessageData.text}". Give a friendly, cultural, and professional reply. Keep it under 25 words.`;
+          
           const reply = await EKANPilotService.getResponse(prompt);
           await addDoc(collection(db, 'chats', currentThread.id, 'messages'), {
-            senderId: currentThread.partner.id,
+            senderId: isCommunity ? 'community_pilot' : currentThread.partner.id,
+            senderName: isCommunity ? `${partnerName} Pilot` : partnerName,
+            senderAvatar: isCommunity ? 'https://picsum.photos/seed/pilot/200/200' : (currentThread.partner as UserType).avatar,
             type: 'text',
             text: reply,
             timestamp: serverTimestamp(),
@@ -293,14 +329,25 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-10 space-y-8 scrollbar-hide">
         {messages.map((m) => {
           const isMe = m.senderId === authUser?.uid;
+          const isCommunity = currentThread && 'members' in currentThread.partner;
+          
           return (
             <div key={m.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-6 duration-700`}>
-              <div className={`max-w-[80%] relative group`}>
-                <div className={`p-8 rounded-[3rem] shadow-3xl relative overflow-hidden ${
-                  isMe 
-                  ? 'bg-indigo-600/20 text-white rounded-tr-none border border-indigo-500/20 backdrop-blur-3xl' 
-                  : 'bg-white/[0.05] backdrop-blur-3xl text-white rounded-tl-none border border-white/10'
-                }`}>
+              <div className={`max-w-[80%] relative group flex ${isMe ? 'flex-row-reverse' : 'flex-row'} items-end space-x-4`}>
+                {!isMe && isCommunity && (
+                  <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 mb-1">
+                    <img src={m.senderAvatar || `https://picsum.photos/seed/${m.senderId}/100/100`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  </div>
+                )}
+                <div className={`space-y-1 ${isMe ? 'items-end' : 'items-start'} flex flex-col`}>
+                  {!isMe && isCommunity && (
+                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-4">{m.senderName || 'Anonymous'}</span>
+                  )}
+                  <div className={`p-8 rounded-[3rem] shadow-3xl relative overflow-hidden ${
+                    isMe 
+                    ? 'bg-indigo-600/20 text-white rounded-tr-none border border-indigo-500/20 backdrop-blur-3xl' 
+                    : 'bg-white/[0.05] backdrop-blur-3xl text-white rounded-tl-none border border-white/10'
+                  }`}>
                   {m.type === 'text' && <p className="text-[17px] leading-relaxed font-medium tracking-tight whitespace-pre-wrap">{m.text}</p>}
                   {m.type === 'image' && (
                     <div className="rounded-2xl overflow-hidden border border-white/10">
@@ -349,6 +396,7 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
                 </div>
               </div>
             </div>
+          </div>
           );
         })}
       </div>
@@ -387,9 +435,43 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
              ))}
           </div>
         )}
+        {showEmoji && (
+          <div className="absolute bottom-28 left-10 right-10 bg-[#0a0a0a] border border-white/10 rounded-[3rem] p-8 animate-in slide-in-from-bottom-10 duration-500 shadow-3xl z-30">
+            <div className="flex border-b border-white/10 mb-6">
+               <button onClick={() => setShowStickers(false)} className={`px-6 py-3 text-xs font-black uppercase tracking-widest ${!showStickers ? 'text-gold border-b-2 border-gold' : 'text-gray-500'}`}>Emojis</button>
+               <button onClick={() => setShowStickers(true)} className={`px-6 py-3 text-xs font-black uppercase tracking-widest ${showStickers ? 'text-gold border-b-2 border-gold' : 'text-gray-500'}`}>Stickers</button>
+            </div>
+            {!showStickers ? (
+              <div className="grid grid-cols-8 gap-4 max-h-60 overflow-y-auto scrollbar-hide">
+                {emojis.map(emoji => (
+                  <button 
+                    key={emoji} 
+                    onClick={() => handleEmojiClick(emoji)}
+                    className="text-4xl hover:scale-125 transition-transform active:scale-90"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-4 max-h-60 overflow-y-auto scrollbar-hide">
+                {stickers.map((sticker, idx) => (
+                  <button 
+                    key={idx} 
+                    onClick={() => handleStickerClick(sticker)}
+                    className="hover:scale-105 transition-transform active:scale-95 rounded-2xl overflow-hidden aspect-square bg-white/5"
+                  >
+                    <img src={sticker} alt="Sticker" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <div className="flex items-center space-x-6">
           <div className="flex-1 bg-white/5 backdrop-blur-[60px] px-8 py-4 rounded-[3rem] border border-white/10 shadow-3xl flex items-center space-x-5 group focus-within:border-gold/30 transition-all">
             <button onClick={() => setShowAttachments(!showAttachments)} className={`p-2 transition-all duration-500 ${showAttachments ? 'text-gold rotate-45' : 'text-gray-600 hover:text-gold'}`}><Paperclip size={32} /></button>
+            <button onClick={() => setShowEmoji(!showEmoji)} className={`p-2 transition-all duration-500 ${showEmoji ? 'text-gold' : 'text-gray-600 hover:text-gold'}`}><Sparkles size={32} /></button>
             <input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()} placeholder="Transmit message across nodes..." className="flex-1 bg-transparent py-5 text-lg font-medium focus:outline-none placeholder:text-gray-800 tracking-tight text-white" />
           </div>
           <button onClick={() => handleSend()} className={`p-8 rounded-full shadow-3xl transition-all active:scale-90 flex items-center justify-center ${inputValue.trim() ? `bg-gradient-to-br ${EKAN_GRADIENT_CSS} text-black` : 'bg-white/5 text-gray-700 border border-white/10'}`}>{inputValue.trim() ? <Send size={32} strokeWidth={3} /> : <Mic size={32} />}</button>

@@ -64,6 +64,33 @@ service cloud.firestore {
     //   - status: string (required, 'completed' | 'pending') - Status
     //   - timestamp: string (required, ISO 8601) - Date
     //
+    // Collection: communities
+    // Document ID: {communityId}
+    // Fields:
+    //   - id: string (required) - Community ID
+    //   - name: string (required) - Community name
+    //   - description: string (required) - Description
+    //   - avatar: string (required) - Avatar URL
+    //   - category: string (required) - Category
+    //   - type: string (required, 'public' | 'private') - Visibility
+    //   - members: list (required) - UIDs of members
+    //   - admins: list (required) - UIDs of admins
+    //   - createdAt: string (required, ISO 8601) - Creation date
+    //   - managedByPilot: bool (optional) - If managed by AI
+    //
+    // Collection: stories
+    // Document ID: {storyId}
+    // Fields:
+    //   - id: string (required) - Story ID
+    //   - userId: string (required) - Author UID
+    //   - userName: string (required) - Author name
+    //   - mediaUrl: string (required) - Media URL
+    //   - type: string (required, 'image' | 'video') - Media type
+    //   - caption: string (optional) - Caption
+    //   - timestamp: string (required, ISO 8601) - Creation date
+    //   - expiresAt: string (required, ISO 8601) - Expiry date
+    //   - viewers: list (required) - UIDs of viewers
+    //
     // ===============================================================
 
     // ===============================================================
@@ -152,6 +179,30 @@ service cloud.firestore {
              isValidDateString(data.timestamp);
     }
 
+    function isValidCommunity(data) {
+      return hasOnlyAllowedFields(['id', 'name', 'description', 'avatar', 'category', 'type', 'members', 'admins', 'createdAt', 'managedByPilot']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.description is string && data.description.size() < 1000 &&
+             data.avatar is string &&
+             data.category is string &&
+             data.type in ['public', 'private'] &&
+             isValidList(data.members, 100000) &&
+             isValidList(data.admins, 100) &&
+             isValidDateString(data.createdAt);
+    }
+
+    function isValidStory(data) {
+      return hasOnlyAllowedFields(['id', 'userId', 'userName', 'mediaUrl', 'type', 'caption', 'timestamp', 'expiresAt', 'viewers']) &&
+             data.userId is string &&
+             data.userName is string &&
+             data.mediaUrl is string &&
+             data.type in ['image', 'video'] &&
+             (!('caption' in data) || (data.caption is string && data.caption.size() < 500)) &&
+             isValidDateString(data.timestamp) &&
+             isValidDateString(data.expiresAt) &&
+             isValidList(data.viewers, 1000000);
+    }
+
     // ===============================================================
     // Match Rules
     // ===============================================================
@@ -179,11 +230,25 @@ service cloud.firestore {
     }
 
     match /chats/{chatId}/messages/{messageId} {
-      // chatId is usually a combination of two user IDs
-      allow read: if isAuthenticated() && (request.auth.uid in chatId.split('_') || isAdmin());
-      allow create: if isAuthenticated() && (request.auth.uid in chatId.split('_')) && isValidMessage(request.resource.data) && request.resource.data.senderId == request.auth.uid;
+      // chatId is either a combination of two user IDs or a community ID
+      allow read: if isAuthenticated() && (request.auth.uid in chatId.split('_') || exists(/databases/$(database)/documents/communities/$(chatId)) || isAdmin());
+      allow create: if isAuthenticated() && (request.auth.uid in chatId.split('_') || (exists(/databases/$(database)/documents/communities/$(chatId)) && request.auth.uid in get(/databases/$(database)/documents/communities/$(chatId)).data.members)) && isValidMessage(request.resource.data) && request.resource.data.senderId == request.auth.uid;
       allow update: if isAdmin();
       allow delete: if isAdmin();
+    }
+
+    match /communities/{communityId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidCommunity(request.resource.data);
+      allow update: if isAuthenticated() && (request.auth.uid in resource.data.admins || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']) || isAdmin());
+      allow delete: if isAuthenticated() && (request.auth.uid in resource.data.admins || isAdmin());
+    }
+
+    match /stories/{storyId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidStory(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewers']) || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
     }
   }
 }

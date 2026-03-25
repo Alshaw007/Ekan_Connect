@@ -48,7 +48,10 @@ import {
   Languages,
   BookOpen,
   UserPlus,
-  UserCheck
+  UserCheck,
+  Users,
+  Activity,
+  Loader2
 } from 'lucide-react';
 
 export {
@@ -99,5 +102,8 @@ export {
   Languages,
   BookOpen,
   UserPlus,
-  UserCheck
+  UserCheck,
+  Users,
+  Activity,
+  Loader2
 };

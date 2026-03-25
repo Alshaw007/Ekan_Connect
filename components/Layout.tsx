@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Home, MessageCircle, Calendar, Wallet, Sparkles, User, Bell, Globe, Search, Scan, Zap } from './Icons';
+import { Home, MessageCircle, Calendar, Wallet, Sparkles, User, Bell, Globe, Search, Scan, Zap, Users, Activity } from './Icons';
 import { Module, LocalizationData } from '../types';
 import { COLORS, VaiPattern, KruPattern, EKAN_GRADIENT_CSS } from '../constants';
 
@@ -32,7 +32,9 @@ const Layout: React.FC<LayoutProps> = ({ activeModule, setActiveModule, children
 
   const navItems: { id: Module; icon: any; label: string }[] = [
     { id: 'feed', icon: Home, label: 'Feed' },
+    { id: 'stories', icon: Activity, label: 'Status' },
     { id: 'chat', icon: MessageCircle, label: 'Chat' },
+    { id: 'communities', icon: Users, label: 'Groups' },
     { id: 'gathering', icon: Calendar, label: 'Gather' },
     { id: 'utilities', icon: Zap, label: 'Utilities' },
     { id: 'wallet', icon: Wallet, label: 'Wallet' },

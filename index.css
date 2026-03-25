@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@keyframes loading {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+.animate-loading {
+  animation: loading 5s linear infinite;
+}
+
+@layer base {
+  body {
+    @apply bg-[#0B0B0B] text-white antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .shadow-3xl {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  }
+  
+  .text-gold {
+    color: #FCD116;
+  }
+  
+  .bg-gold {
+    background-color: #FCD116;
+  }
+  
+  .border-gold {
+    border-color: #FCD116;
+  }
+}

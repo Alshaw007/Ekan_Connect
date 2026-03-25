@@ -30,8 +30,20 @@ interface AuthProps {
   }) => void;
 }
 
-const INTEREST_OPTIONS = ['Fintech', 'Afrobeats', 'Agriculture', 'Tech Ed', 'Logistics', 'Art', 'Fashion', 'Trade'];
-const LANGUAGE_OPTIONS = ['English', 'Mandarin', 'French', 'Spanish', 'Arabic', 'Portuguese', 'Swahili', 'Yoruba', 'Igbo', 'Twi', 'Wolof'];
+const INTEREST_OPTIONS = [
+  'Fintech', 'Afrobeats', 'Agriculture', 'Tech Ed', 'Logistics', 'Art', 'Fashion', 'Trade',
+  'Blockchain', 'AI', 'Renewable Energy', 'Health Tech', 'E-commerce', 'Mining', 'Tourism',
+  'Gaming', 'Sports', 'Cooking', 'Photography', 'Writing', 'Music Production', 'Dance',
+  'Philosophy', 'Politics', 'History', 'Science', 'Astronomy', 'Gardening', 'DIY', 'Fitness',
+  'Yoga', 'Meditation', 'Travel', 'Languages', 'Coding', 'Robotics', 'Design', 'Architecture'
+];
+
+const LANGUAGE_OPTIONS = [
+  'English', 'Mandarin', 'French', 'Spanish', 'Arabic', 'Portuguese', 'Swahili', 'Yoruba', 
+  'Igbo', 'Twi', 'Wolof', 'Hausa', 'Zulu', 'Amharic', 'Oromo', 'Somali', 'Afrikaans',
+  'Hindi', 'Bengali', 'Russian', 'Japanese', 'German', 'Korean', 'Italian', 'Turkish',
+  'Vietnamese', 'Thai', 'Dutch', 'Greek', 'Hebrew', 'Indonesian', 'Malay', 'Persian'
+];
 
 const getLocInfo = (countryCode: string) => {
   const data: Record<string, { country: string; continent: string; lang: string; greeting: string }> = {
