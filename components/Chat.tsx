@@ -20,36 +20,23 @@ import {
 import { EKAN_GRADIENT_CSS } from '../constants';
 import { Message, User as UserType, ChatThread, MessageType } from '../types';
 import { EKANPilotService } from '../services/gemini';
+import { useFirebase } from './FirebaseProvider';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, setDoc, getDoc, where, limit } from 'firebase/firestore';
 
 interface ChatProps {
   activePartner?: UserType | null;
-  onUpdateBalance: (amount: number) => void;
-  messagesByThread: Record<string, Message[]>;
-  onSendMessage: (threadId: string, msg: Message) => void;
+  onUpdateBalance: (amount: number, description?: string) => void;
+  messagesByThread?: any;
+  onSendMessage?: (threadId: string, msg: Message) => Promise<void>;
 }
 
-const MOCK_THREADS: ChatThread[] = [
-  {
-    id: 't1',
-    partner: { id: 'u1', name: 'Zoe M.', avatar: 'Z', location: 'London, UK' },
-    lastMessage: "Asset bridging complete. Let's talk business.",
-    timestamp: new Date(),
-    unreadCount: 0,
-    online: true
-  },
-  {
-    id: 't2',
-    partner: { id: 'u2', name: 'Kwame O.', avatar: 'K', location: 'Accra, GH' },
-    lastMessage: "Manifesting new beats this weekend!",
-    timestamp: new Date(Date.now() - 3600000),
-    unreadCount: 0,
-    online: false
-  }
-];
-
-const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance, messagesByThread, onSendMessage }) => {
+const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
+  const { user: authUser, profile } = useFirebase();
   const [view, setView] = useState<'list' | 'conversation'>('list');
   const [currentThread, setCurrentThread] = useState<ChatThread | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [threads, setThreads] = useState<ChatThread[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [showAttachments, setShowAttachments] = useState(false);
   const [calling, setCalling] = useState<'audio' | 'video' | null>(null);
@@ -58,80 +45,160 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance, messagesByT
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Helper to get deterministic chatId
+  const getChatId = (uid1: string, uid2: string) => {
+    return [uid1, uid2].sort().join('_');
+  };
+
+  // Sync Threads (for the list view)
   useEffect(() => {
-    if (activePartner) {
-      const thread = { id: activePartner.id, partner: activePartner, lastMessage: '', timestamp: new Date(), unreadCount: 0, online: true };
+    if (!authUser) return;
+
+    // In a real app, we'd query a 'threads' collection where user is participant.
+    // For now, let's just show users we can chat with.
+    const usersRef = collection(db, 'users');
+    const unsubscribe = onSnapshot(usersRef, (snapshot) => {
+      const otherUsers = snapshot.docs
+        .map(doc => ({ ...doc.data(), id: doc.id } as UserType))
+        .filter(u => u.id !== authUser.uid);
+      
+      const generatedThreads: ChatThread[] = otherUsers.map(u => ({
+        id: getChatId(authUser.uid, u.id),
+        partner: u,
+        lastMessage: 'Tap to start bridging...',
+        timestamp: new Date().toISOString(),
+        unreadCount: 0,
+        online: true
+      }));
+      setThreads(generatedThreads);
+    });
+
+    return () => unsubscribe();
+  }, [authUser]);
+
+  // Sync Messages for current thread
+  useEffect(() => {
+    if (!currentThread || !authUser) {
+      setMessages([]);
+      return;
+    }
+
+    const messagesRef = collection(db, 'chats', currentThread.id, 'messages');
+    const q = query(messagesRef, orderBy('timestamp', 'asc'), limit(100));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedMessages = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          id: doc.id,
+          timestamp: data.timestamp?.toDate() || new Date()
+        } as Message;
+      });
+      setMessages(fetchedMessages);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, `chats/${currentThread.id}/messages`);
+    });
+
+    return () => unsubscribe();
+  }, [currentThread, authUser]);
+
+  useEffect(() => {
+    if (activePartner && authUser) {
+      const thread: ChatThread = { 
+        id: getChatId(authUser.uid, activePartner.id), 
+        partner: activePartner, 
+        lastMessage: '', 
+        timestamp: new Date().toISOString(), 
+        unreadCount: 0, 
+        online: true 
+      };
       setCurrentThread(thread);
       setView('conversation');
     }
-  }, [activePartner]);
+  }, [activePartner, authUser]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     }
-  }, [messagesByThread, view]);
+  }, [messages, view]);
 
-  const handleSend = (type: MessageType = 'text', payload?: any) => {
-    if (!currentThread) return;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingFileType, setPendingFileType] = useState<MessageType | null>(null);
 
-    let newMessage: Message;
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && pendingFileType) {
+      handleSend(pendingFileType, { name: file.name });
+      setPendingFileType(null);
+    }
+  };
+
+  const triggerFileSelect = (type: MessageType) => {
+    setPendingFileType(type);
+    fileInputRef.current?.click();
+  };
+
+  const handleSend = async (type: MessageType = 'text', payload?: any) => {
+    if (!currentThread || !authUser || !profile) return;
+
+    let newMessageData: any = {
+      senderId: authUser.uid,
+      type,
+      timestamp: serverTimestamp(),
+      status: 'sent'
+    };
     
     if (type === 'text') {
       if (!inputValue.trim()) return;
-      newMessage = {
-        id: Date.now().toString(),
-        senderId: 'me',
-        type: 'text',
-        text: inputValue,
-        timestamp: new Date(),
-        status: 'sent'
-      };
+      newMessageData.text = inputValue;
       setInputValue('');
     } else if (type === 'money') {
       const amt = parseFloat(transferAmount);
       if (isNaN(amt) || amt <= 0) return;
-      newMessage = {
-        id: Date.now().toString(),
-        senderId: 'me',
-        type: 'money',
-        amount: amt,
-        timestamp: new Date(),
-        status: 'sent'
-      };
+      newMessageData.amount = amt;
       onUpdateBalance(-amt);
       setTransferAmount('');
       setShowTransfer(false);
+    } else if (type === 'image' || type === 'video') {
+      newMessageData.mediaUrl = type === 'image' 
+        ? `https://picsum.photos/seed/${Math.random()}/800/600`
+        : 'https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4';
+      newMessageData.fileName = payload?.name || 'attachment';
     } else {
-      newMessage = { id: Date.now().toString(), senderId: 'me', type, mediaUrl: 'https://picsum.photos/seed/ekan/400/300', timestamp: new Date(), status: 'sent' };
+      newMessageData.mediaUrl = 'https://picsum.photos/seed/ekan/400/300';
     }
 
-    onSendMessage(currentThread.id, newMessage);
-    setShowAttachments(false);
+    try {
+      await addDoc(collection(db, 'chats', currentThread.id, 'messages'), newMessageData);
+      setShowAttachments(false);
 
-    // AI Simulation: Partner auto-replies using the Gemini service
-    setTimeout(async () => {
-      const prompt = `You are ${currentThread.partner.name} responding to a friend named User. They just sent: "${newMessage.text || 'money transfer'}". Give a friendly, cultural, and professional reply. Keep it under 25 words.`;
-      const reply = await EKANPilotService.getResponse(prompt);
-      onSendMessage(currentThread.id, {
-        id: (Date.now() + 1).toString(),
-        senderId: currentThread.id,
-        type: 'text',
-        text: reply,
-        timestamp: new Date(),
-        status: 'read'
-      });
-    }, 3500);
+      // AI Simulation: Partner auto-replies using the Gemini service
+      if (type === 'text') {
+        setTimeout(async () => {
+          const prompt = `You are ${currentThread.partner.name} responding to a friend named ${profile.name}. They just sent: "${newMessageData.text}". Give a friendly, cultural, and professional reply. Keep it under 25 words.`;
+          const reply = await EKANPilotService.getResponse(prompt);
+          await addDoc(collection(db, 'chats', currentThread.id, 'messages'), {
+            senderId: currentThread.partner.id,
+            type: 'text',
+            text: reply,
+            timestamp: serverTimestamp(),
+            status: 'read'
+          });
+        }, 3500);
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `chats/${currentThread.id}/messages`);
+    }
   };
-
-  const activeMessages = currentThread ? (messagesByThread[currentThread.id] || []) : [];
 
   if (view === 'list') {
     return (
       <div className="flex flex-col h-full animate-in fade-in duration-1000 pb-24">
         <div className="p-12 pb-6 space-y-10">
           <div className="flex items-center justify-between">
-            <h1 className="text-5xl font-black tracking-tighter">Bridges</h1>
+            <h1 className="text-5xl font-black tracking-tighter text-white">Bridges</h1>
             <button className={`p-5 bg-gradient-to-br ${EKAN_GRADIENT_CSS} rounded-[1.8rem] text-black shadow-2xl active:scale-95 transition-all`}>
               <Plus size={28} strokeWidth={3} />
             </button>
@@ -141,12 +208,12 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance, messagesByT
             <input 
               type="text" 
               placeholder="Search secure node threads..." 
-              className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] py-6 pl-18 pr-8 text-sm focus:outline-none focus:border-gold/30 transition-all placeholder:text-gray-800"
+              className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] py-6 pl-18 pr-8 text-sm focus:outline-none focus:border-gold/30 transition-all placeholder:text-gray-800 text-white"
             />
           </div>
         </div>
         <div className="flex-1 overflow-y-auto px-8 space-y-4 scrollbar-hide">
-          {MOCK_THREADS.map((thread) => (
+          {threads.map((thread) => (
             <button 
               key={thread.id}
               onClick={() => { setCurrentThread(thread); setView('conversation'); }}
@@ -154,15 +221,15 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance, messagesByT
             >
               <div className="relative">
                 <div className={`w-18 h-18 rounded-[1.6rem] bg-gradient-to-br ${EKAN_GRADIENT_CSS} p-0.5 shadow-xl`}>
-                  <div className="w-full h-full bg-black rounded-[1.5rem] flex items-center justify-center font-black text-2xl">
-                    {thread.partner.avatar}
+                  <div className="w-full h-full bg-black rounded-[1.5rem] flex items-center justify-center font-black text-2xl text-white overflow-hidden">
+                    {thread.partner.avatar ? <img src={thread.partner.avatar} className="w-full h-full object-cover" /> : thread.partner.name[0]}
                   </div>
                 </div>
                 {thread.online && <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-4 border-[#050505]"></div>}
               </div>
               <div className="flex-1 text-left">
                 <div className="flex justify-between items-center mb-1">
-                  <h3 className="font-black text-xl tracking-tight group-hover:text-gold transition-colors">{thread.partner.name}</h3>
+                  <h3 className="font-black text-xl tracking-tight group-hover:text-gold transition-colors text-white">{thread.partner.name}</h3>
                   <span className="text-[10px] font-black uppercase tracking-widest text-gray-600">Active</span>
                 </div>
                 <p className="text-sm text-gray-500 font-medium truncate max-w-[220px]">{thread.lastMessage}</p>
@@ -180,8 +247,8 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance, messagesByT
       {calling && (
         <div className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-[120px] flex flex-col items-center justify-center space-y-16 animate-in zoom-in-95 duration-500">
            <div className={`w-56 h-56 rounded-[5rem] bg-gradient-to-br ${EKAN_GRADIENT_CSS} p-1 shadow-3xl`}>
-              <div className="w-full h-full bg-black rounded-[4.8rem] flex items-center justify-center text-8xl font-black text-white">
-                {currentThread?.partner.avatar}
+              <div className="w-full h-full bg-black rounded-[4.8rem] flex items-center justify-center text-8xl font-black text-white overflow-hidden">
+                {currentThread?.partner.avatar ? <img src={currentThread.partner.avatar} className="w-full h-full object-cover" /> : currentThread?.partner.name[0]}
               </div>
            </div>
            <div className="text-center space-y-5">
@@ -204,13 +271,13 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance, messagesByT
           <button onClick={() => setView('list')} className="p-3 text-gray-500 hover:text-white transition-all bg-white/5 rounded-2xl"><ChevronLeft size={32} /></button>
           <div className="relative">
             <div className={`w-16 h-16 rounded-[1.4rem] bg-gradient-to-br ${EKAN_GRADIENT_CSS} p-0.5 shadow-xl`}>
-                <div className="w-full h-full bg-black rounded-[1.3rem] flex items-center justify-center font-black text-3xl">
-                  {currentThread?.partner.avatar}
+                <div className="w-full h-full bg-black rounded-[1.3rem] flex items-center justify-center font-black text-3xl text-white overflow-hidden">
+                  {currentThread?.partner.avatar ? <img src={currentThread.partner.avatar} className="w-full h-full object-cover" /> : currentThread?.partner.name[0]}
                 </div>
             </div>
           </div>
           <div>
-            <h2 className="text-2xl font-black tracking-tighter">{currentThread?.partner.name}</h2>
+            <h2 className="text-2xl font-black tracking-tighter text-white">{currentThread?.partner.name}</h2>
             <div className="flex items-center space-x-2">
                <span className="text-[10px] text-green-500 font-black uppercase tracking-[0.4em]">Grid Encryption Active</span>
             </div>
@@ -224,8 +291,8 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance, messagesByT
 
       {/* Message Stream */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-10 space-y-8 scrollbar-hide">
-        {activeMessages.map((m) => {
-          const isMe = m.senderId === 'me';
+        {messages.map((m) => {
+          const isMe = m.senderId === authUser?.uid;
           return (
             <div key={m.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-6 duration-700`}>
               <div className={`max-w-[80%] relative group`}>
@@ -235,6 +302,28 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance, messagesByT
                   : 'bg-white/[0.05] backdrop-blur-3xl text-white rounded-tl-none border border-white/10'
                 }`}>
                   {m.type === 'text' && <p className="text-[17px] leading-relaxed font-medium tracking-tight whitespace-pre-wrap">{m.text}</p>}
+                  {m.type === 'image' && (
+                    <div className="rounded-2xl overflow-hidden border border-white/10">
+                      <img src={m.mediaUrl} alt="attachment" className="w-full max-h-60 object-cover" />
+                    </div>
+                  )}
+                  {m.type === 'video' && (
+                    <div className="rounded-2xl overflow-hidden border border-white/10 relative group/video">
+                      <video src={m.mediaUrl} className="w-full max-h-60 object-cover" />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/video:opacity-100 transition-opacity">
+                        <PlayCircle size={48} className="text-white" />
+                      </div>
+                    </div>
+                  )}
+                  {m.type === 'file' && (
+                    <div className="flex items-center space-x-4 p-4 bg-white/5 rounded-2xl border border-white/10">
+                      <div className="p-3 bg-indigo-600/20 text-indigo-400 rounded-xl"><Paperclip size={24} /></div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold truncate text-white">{m.fileName || 'Document'}</p>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-widest">Secure Transmission</p>
+                      </div>
+                    </div>
+                  )}
                   {m.type === 'money' && (
                     <div className={`p-10 rounded-[2.5rem] ${isMe ? 'bg-green-500/10 border-green-500/30' : 'bg-gold/10 border-gold/30'} border space-y-8`}>
                        <div className="flex items-center space-x-5">
@@ -254,7 +343,7 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance, messagesByT
                     </div>
                   )}
                   <div className="flex items-center justify-end space-x-3 mt-4 opacity-30">
-                    <span className="text-[10px] font-black uppercase tracking-widest">{m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest">{new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     {isMe && <CheckCheck size={16} className="text-blue-500" />}
                   </div>
                 </div>
@@ -264,19 +353,32 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance, messagesByT
         })}
       </div>
 
-      {/* Immersive Interaction Tray */}
+      {/* Interaction Tray */}
       <div className="p-10 pt-2">
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          className="hidden" 
+          onChange={handleFileSelect}
+          accept={pendingFileType === 'image' ? 'image/*' : pendingFileType === 'video' ? 'video/*' : '*'}
+        />
         {showAttachments && (
           <div className="grid grid-cols-4 gap-6 mb-8 animate-in slide-in-from-bottom-12 duration-500">
              {[
                { icon: ImageIcon, label: 'Asset', color: 'bg-indigo-600', type: 'image' },
                { icon: PlayCircle, label: 'Media', color: 'bg-red-600', type: 'video' },
                { icon: DollarSign, label: 'Transmission', color: 'bg-green-600', type: 'money' },
-               { icon: MoreHorizontal, label: 'Protocol', color: 'bg-gray-800', type: 'none' }
+               { icon: Paperclip, label: 'File', color: 'bg-gray-800', type: 'file' }
              ].map(item => (
                <button 
                 key={item.label}
-                onClick={() => item.type === 'money' ? setShowTransfer(true) : item.type !== 'none' && handleSend(item.type as MessageType)}
+                onClick={() => {
+                  if (item.type === 'money') {
+                    setShowTransfer(true);
+                  } else if (item.type === 'image' || item.type === 'video' || item.type === 'file') {
+                    triggerFileSelect(item.type as MessageType);
+                  }
+                }}
                 className="flex flex-col items-center space-y-4 group"
                >
                   <div className={`w-20 h-20 rounded-[2.2rem] ${item.color} flex items-center justify-center text-white shadow-2xl group-hover:scale-110 transition-transform`}><item.icon size={32} /></div>
@@ -288,7 +390,7 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance, messagesByT
         <div className="flex items-center space-x-6">
           <div className="flex-1 bg-white/5 backdrop-blur-[60px] px-8 py-4 rounded-[3rem] border border-white/10 shadow-3xl flex items-center space-x-5 group focus-within:border-gold/30 transition-all">
             <button onClick={() => setShowAttachments(!showAttachments)} className={`p-2 transition-all duration-500 ${showAttachments ? 'text-gold rotate-45' : 'text-gray-600 hover:text-gold'}`}><Paperclip size={32} /></button>
-            <input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()} placeholder="Transmit message across nodes..." className="flex-1 bg-transparent py-5 text-lg font-medium focus:outline-none placeholder:text-gray-800 tracking-tight" />
+            <input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()} placeholder="Transmit message across nodes..." className="flex-1 bg-transparent py-5 text-lg font-medium focus:outline-none placeholder:text-gray-800 tracking-tight text-white" />
           </div>
           <button onClick={() => handleSend()} className={`p-8 rounded-full shadow-3xl transition-all active:scale-90 flex items-center justify-center ${inputValue.trim() ? `bg-gradient-to-br ${EKAN_GRADIENT_CSS} text-black` : 'bg-white/5 text-gray-700 border border-white/10'}`}>{inputValue.trim() ? <Send size={32} strokeWidth={3} /> : <Mic size={32} />}</button>
         </div>
@@ -302,7 +404,7 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance, messagesByT
               <button onClick={() => setShowTransfer(false)} className="absolute top-12 right-12 p-5 bg-white/5 rounded-full text-gray-500 hover:text-white transition-all"><X size={32} /></button>
               <div className="text-center space-y-6 pt-6 relative z-10">
                 <div className="w-24 h-24 bg-green-500/10 rounded-[2rem] mx-auto flex items-center justify-center text-green-500 mb-6 shadow-2xl border border-green-500/20"><DollarSign size={48} /></div>
-                <h3 className="text-5xl font-black tracking-tighter">Bridge Asset</h3>
+                <h3 className="text-5xl font-black tracking-tighter text-white">Bridge Asset</h3>
                 <p className="text-[12px] text-gray-500 font-black uppercase tracking-[0.5em]">Executing transmission to {currentThread?.partner.name}</p>
               </div>
               <div className="relative group z-10">

@@ -1,16 +1,36 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
+import { UserProfile } from "../types";
 
 export const EKANPilotService = {
-  async getResponse(prompt: string, context?: string) {
-    // Create instance inside to ensure the latest API key from process.env.API_KEY is used
+  async getResponse(prompt: string, profile?: UserProfile | null) {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const context = profile ? `
+      User Context:
+      - Name: ${profile.name}
+      - Location: ${profile.location}
+      - Native Language: ${profile.nativeLanguage}
+      - Learning Languages: ${profile.learningLanguages?.join(', ')}
+      - Interests: ${profile.interests?.join(', ')}
+    ` : '';
+
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: prompt,
         config: {
-          systemInstruction: "You are EKAN-Pilot, the Digital Concierge for 'EKAN Social Connect'. You are culturally intelligent, understand Pan-African dialects, global business etiquette, and provide concierge-level support. You help users summarize feeds, draft messages in foreign languages, and identify marketplace fraud.",
+          systemInstruction: `You are EKAN-Pilot, the Digital Concierge for 'EKAN Social Connect'. 
+          You are culturally intelligent, understand Pan-African dialects, global business etiquette, and provide concierge-level support. 
+          
+          Key Responsibilities:
+          1. Translation: Translate messages between 100+ languages fluently.
+          2. Language Learning: Provide personalized tips, vocabulary, and practice scenarios based on the user's learning languages and interests.
+          3. Account Management: Help users understand their Grid Trust Score and wallet features.
+          4. Marketplace Verification: Identify potential fraud in marketplace manifests.
+          
+          Tone: Professional, helpful, high-resonance, and culturally aware.
+          
+          ${context}`,
           temperature: 0.7,
         },
       });
@@ -22,7 +42,6 @@ export const EKANPilotService = {
   },
 
   async translateMessage(text: string, targetLang: string = 'English') {
-    // Create instance inside to ensure the latest API key from process.env.API_KEY is used
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
       const response = await ai.models.generateContent({

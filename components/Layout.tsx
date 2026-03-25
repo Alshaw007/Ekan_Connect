@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Home, MessageCircle, Calendar, Wallet, Sparkles, User, Bell, Globe, Search, Scan } from './Icons';
+import { Home, MessageCircle, Calendar, Wallet, Sparkles, User, Bell, Globe, Search, Scan, Zap } from './Icons';
 import { Module, LocalizationData } from '../types';
 import { COLORS, VaiPattern, KruPattern, EKAN_GRADIENT_CSS } from '../constants';
 
@@ -18,6 +18,9 @@ const Layout: React.FC<LayoutProps> = ({ activeModule, setActiveModule, children
     // In a real app, this would come from a global user state
     setTimeout(() => {
       setLoc({ 
+        region: 'West Africa',
+        currency: 'USD',
+        timezone: 'GMT',
         city: 'Monrovia', 
         country: 'Liberia', 
         language: 'en-LR', 
@@ -31,6 +34,7 @@ const Layout: React.FC<LayoutProps> = ({ activeModule, setActiveModule, children
     { id: 'feed', icon: Home, label: 'Feed' },
     { id: 'chat', icon: MessageCircle, label: 'Chat' },
     { id: 'gathering', icon: Calendar, label: 'Gather' },
+    { id: 'utilities', icon: Zap, label: 'Utilities' },
     { id: 'wallet', icon: Wallet, label: 'Wallet' },
     { id: 'pilot', icon: Sparkles, label: 'Pilot' },
     { id: 'profile', icon: User, label: 'Me' },

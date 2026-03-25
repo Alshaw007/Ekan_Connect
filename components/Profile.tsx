@@ -6,20 +6,21 @@ import { Post, UserProfile } from '../types';
 
 // Fix: Added missing timestamp property to MOCK_POSTS to satisfy Post interface requirements
 const MOCK_POSTS: Post[] = [
-  { id: '1', thumbnail: 'https://picsum.photos/seed/p1/400/400', likes: 124, timestamp: '2 days ago' },
-  { id: '2', thumbnail: 'https://picsum.photos/seed/p2/400/400', likes: 88, timestamp: '3 days ago' },
-  { id: '3', thumbnail: 'https://picsum.photos/seed/p3/400/400', likes: 215, timestamp: '1 week ago' },
-  { id: '4', thumbnail: 'https://picsum.photos/seed/p4/400/400', likes: 45, timestamp: '2 weeks ago' },
-  { id: '5', thumbnail: 'https://picsum.photos/seed/p5/400/400', likes: 932, timestamp: '1 month ago' },
-  { id: '6', thumbnail: 'https://picsum.photos/seed/p6/400/400', likes: 12, timestamp: '2 months ago' },
+  { id: '1', authorId: 'm1', authorName: 'Me', content: 'Manifesting...', thumbnail: 'https://picsum.photos/seed/p1/400/400', likes: 124, timestamp: new Date().toISOString() },
+  { id: '2', authorId: 'm1', authorName: 'Me', content: 'Manifesting...', thumbnail: 'https://picsum.photos/seed/p2/400/400', likes: 88, timestamp: new Date().toISOString() },
+  { id: '3', authorId: 'm1', authorName: 'Me', content: 'Manifesting...', thumbnail: 'https://picsum.photos/seed/p3/400/400', likes: 215, timestamp: new Date().toISOString() },
+  { id: '4', authorId: 'm1', authorName: 'Me', content: 'Manifesting...', thumbnail: 'https://picsum.photos/seed/p4/400/400', likes: 45, timestamp: new Date().toISOString() },
+  { id: '5', authorId: 'm1', authorName: 'Me', content: 'Manifesting...', thumbnail: 'https://picsum.photos/seed/p5/400/400', likes: 932, timestamp: new Date().toISOString() },
+  { id: '6', authorId: 'm1', authorName: 'Me', content: 'Manifesting...', thumbnail: 'https://picsum.photos/seed/p6/400/400', likes: 12, timestamp: new Date().toISOString() },
 ];
 
 interface ProfileProps {
   user: UserProfile;
+  posts: Post[];
   onLogout: () => void;
 }
 
-const Profile: React.FC<ProfileProps> = ({ user, onLogout }) => {
+const Profile: React.FC<ProfileProps> = ({ user, posts, onLogout }) => {
   const [showQr, setShowQr] = useState(false);
 
   return (
@@ -75,7 +76,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onLogout }) => {
         </div>
 
         <div className="grid grid-cols-3 gap-0.5 pt-0.5">
-            {MOCK_POSTS.map(post => (
+            {posts.map(post => (
                 <div key={post.id} className="relative aspect-square group cursor-pointer overflow-hidden">
                     <img src={post.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="post" />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -86,6 +87,11 @@ const Profile: React.FC<ProfileProps> = ({ user, onLogout }) => {
                     </div>
                 </div>
             ))}
+            {posts.length === 0 && (
+              <div className="col-span-3 py-20 text-center">
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-600">No Grid Manifests Yet</p>
+              </div>
+            )}
         </div>
       </div>
 

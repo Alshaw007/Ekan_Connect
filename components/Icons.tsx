@@ -39,7 +39,16 @@ import {
   CheckCircle2,
   Fingerprint,
   Smartphone,
-  MessageSquare
+  MessageSquare,
+  Zap,
+  Droplets,
+  Bus,
+  Plane,
+  Train,
+  Languages,
+  BookOpen,
+  UserPlus,
+  UserCheck
 } from 'lucide-react';
 
 export {
@@ -81,5 +90,14 @@ export {
   CheckCircle2,
   Fingerprint,
   Smartphone,
-  MessageSquare
+  MessageSquare,
+  Zap,
+  Droplets,
+  Bus,
+  Plane,
+  Train,
+  Languages,
+  BookOpen,
+  UserPlus,
+  UserCheck
 };

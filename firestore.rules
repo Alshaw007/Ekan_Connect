@@ -1,0 +1,189 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId} (UID from Auth)
+    // Fields:
+    //   - id: string (required) - UID
+    //   - name: string (required) - Display name
+    //   - email: string (required, email format) - User email
+    //   - handle: string (required) - Unique handle
+    //   - avatar: string (optional) - URL to avatar
+    //   - location: string (optional) - Node location
+    //   - bio: string (optional) - Biography
+    //   - interests: list (optional) - List of interests
+    //   - nativeLanguage: string (optional) - Native language
+    //   - learningLanguages: list (optional) - Languages being learned
+    //   - following: list (optional) - UIDs of users followed
+    //   - followers: list (optional) - UIDs of followers
+    //   - balance: number (required, >= 0) - Wallet balance
+    //   - joinedAt: string (required, ISO 8601) - Join date
+    //   - isVerified: bool (optional) - Verification status
+    //   - trustScore: int (optional) - Trust score
+    //   - role: string (required, 'user' | 'admin') - User role
+    //
+    // Collection: posts
+    // Document ID: {postId}
+    // Fields:
+    //   - id: string (required) - Post ID
+    //   - authorId: string (required) - Author UID
+    //   - authorName: string (required) - Author name
+    //   - content: string (required, < 1000 chars) - Post text
+    //   - thumbnail: string (optional) - Media URL
+    //   - likes: int (required, >= 0) - Like count
+    //   - timestamp: string (required, ISO 8601) - Creation date
+    //
+    // Collection: chats/{chatId}/messages
+    // Document ID: {messageId}
+    // Fields:
+    //   - id: string (required) - Message ID
+    //   - senderId: string (required) - Sender UID
+    //   - receiverId: string (required) - Receiver UID
+    //   - text: string (optional, < 2000 chars) - Message text
+    //   - type: string (required, enum) - Message type
+    //   - mediaUrl: string (optional) - Media URL
+    //   - fileName: string (optional) - File name
+    //   - amount: number (optional, >= 0) - Money amount
+    //   - timestamp: string (required, ISO 8601) - Sent date
+    //   - status: string (optional, enum) - Delivery status
+    //
+    // Collection: users/{userId}/transactions
+    // Document ID: {transactionId}
+    // Fields:
+    //   - id: string (required) - Transaction ID
+    //   - userId: string (required) - User UID
+    //   - amount: number (required) - Amount
+    //   - type: string (required, 'inbound' | 'outbound') - Direction
+    //   - description: string (required) - Description
+    //   - status: string (required, 'completed' | 'pending') - Status
+    //   - timestamp: string (required, ISO 8601) - Date
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "alshaw007@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidList(list, maxSize) {
+      return list is list && list.size() <= maxSize;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['id', 'name', 'email', 'handle', 'avatar', 'location', 'bio', 'interests', 'nativeLanguage', 'learningLanguages', 'following', 'followers', 'balance', 'joinedAt', 'isVerified', 'trustScore', 'role']) &&
+             data.id is string && data.id.size() > 0 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             isValidEmail(data.email) &&
+             data.handle is string && data.handle.size() > 0 && data.handle.size() < 50 &&
+             data.balance is number && data.balance >= 0 &&
+             isValidDateString(data.joinedAt) &&
+             data.role in ['user', 'admin'] &&
+             (!('interests' in data) || isValidList(data.interests, 20)) &&
+             (!('learningLanguages' in data) || isValidList(data.learningLanguages, 10)) &&
+             (!('following' in data) || isValidList(data.following, 5000)) &&
+             (!('followers' in data) || isValidList(data.followers, 1000000));
+    }
+
+    function isValidPost(data) {
+      return hasOnlyAllowedFields(['id', 'authorId', 'authorName', 'content', 'thumbnail', 'likes', 'timestamp']) &&
+             data.id is string &&
+             data.authorId is string &&
+             data.authorName is string && data.authorName.size() < 100 &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 2000 &&
+             data.likes is int && data.likes >= 0 &&
+             isValidDateString(data.timestamp);
+    }
+
+    function isValidMessage(data) {
+      return hasOnlyAllowedFields(['id', 'senderId', 'receiverId', 'text', 'type', 'mediaUrl', 'fileName', 'amount', 'timestamp', 'status']) &&
+             data.id is string &&
+             data.senderId is string &&
+             data.receiverId is string &&
+             data.type in ['text', 'image', 'video', 'file', 'money'] &&
+             (!('text' in data) || (data.text is string && data.text.size() < 5000)) &&
+             (!('mediaUrl' in data) || (data.mediaUrl is string && data.mediaUrl.size() < 1000)) &&
+             (!('amount' in data) || (data.amount is number && data.amount >= 0)) &&
+             isValidDateString(data.timestamp);
+    }
+
+    function isValidTransaction(data) {
+      return hasOnlyAllowedFields(['id', 'userId', 'amount', 'type', 'description', 'status', 'timestamp']) &&
+             data.id is string &&
+             data.userId is string &&
+             data.amount is number &&
+             data.type in ['inbound', 'outbound'] &&
+             data.description is string && data.description.size() < 500 &&
+             data.status in ['completed', 'pending'] &&
+             isValidDateString(data.timestamp);
+    }
+
+    // ===============================================================
+    // Match Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated(); // Allow reading profiles for social discovery
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == 'user' || isAdmin());
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin())) || isAdmin();
+      allow delete: if isAdmin();
+
+      match /transactions/{transactionId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidTransaction(request.resource.data);
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /posts/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidPost(request.resource.data) && request.resource.data.authorId == request.auth.uid;
+      allow update: if (isAuthenticated() && isValidPost(request.resource.data) && (resource.data.authorId == request.auth.uid || isAdmin())) || 
+                       (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])); // Allow anyone to like
+      allow delete: if (isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin()));
+    }
+
+    match /chats/{chatId}/messages/{messageId} {
+      // chatId is usually a combination of two user IDs
+      allow read: if isAuthenticated() && (request.auth.uid in chatId.split('_') || isAdmin());
+      allow create: if isAuthenticated() && (request.auth.uid in chatId.split('_')) && isValidMessage(request.resource.data) && request.resource.data.senderId == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}

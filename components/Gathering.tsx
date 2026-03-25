@@ -5,6 +5,7 @@ import { COLORS, EKAN_GRADIENT_CSS } from '../constants';
 import { Event, User as UserType } from '../types';
 
 interface GatheringProps {
+  users: UserType[];
   onStartChat: (user: UserType) => void;
 }
 
@@ -16,6 +17,7 @@ const MOCK_EVENTS: Event[] = [
     location: 'Royal Grand Hotel, Monrovia',
     type: 'Professional',
     price: 25.00,
+    attendees: 120,
     image: 'https://picsum.photos/seed/networking/800/600',
     isTicketed: true,
     hasGroupChat: true,
@@ -27,20 +29,14 @@ const MOCK_EVENTS: Event[] = [
     location: 'Libassa Eco Resort',
     type: 'Social',
     price: 15.00,
+    attendees: 450,
     image: 'https://picsum.photos/seed/beach/800/600',
     isTicketed: true,
     hasGroupChat: true,
   }
 ];
 
-const MOCK_DISCOVERY: UserType[] = [
-  { id: 'u1', name: 'Zoe M.', avatar: 'Z', location: 'London, UK', interests: ['Investments', 'Art'], languages: ['English', 'French'], bio: "Art curator and angel investor looking for Liberian talent." },
-  { id: 'u2', name: 'Kwame O.', avatar: 'K', location: 'Accra, Ghana', interests: ['Music Production', 'Afrobeats'], languages: ['English', 'Twi'], bio: "Producer at O-Sound. Let's make some hits together." },
-  { id: 'u3', name: 'Chen X.', avatar: 'C', location: 'Beijing, China', interests: ['Logistics', 'Trade'], languages: ['Mandarin', 'English'], bio: "Infrastructure developer exploring partnerships in West Africa." },
-  { id: 'u4', name: 'Marie T.', avatar: 'M', location: 'Monrovia, Liberia', interests: ['Fashion', 'Social Tech'], languages: ['English', 'Kru'], bio: "Founder of Monrovia Styles. Building the local creator economy." },
-];
-
-const Gathering: React.FC<GatheringProps> = ({ onStartChat }) => {
+const Gathering: React.FC<GatheringProps> = ({ users, onStartChat }) => {
   const [mode, setMode] = useState<'events' | 'discovery'>('events');
   const [searchQuery, setSearchQuery] = useState('');
   const [friends, setFriends] = useState<string[]>([]);
@@ -53,7 +49,7 @@ const Gathering: React.FC<GatheringProps> = ({ onStartChat }) => {
     }
   };
 
-  const filteredDiscovery = MOCK_DISCOVERY.filter(u => 
+  const filteredDiscovery = users.filter(u => 
     u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     u.interests?.some(i => i.toLowerCase().includes(searchQuery.toLowerCase()))
   );

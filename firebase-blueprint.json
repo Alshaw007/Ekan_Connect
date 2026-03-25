@@ -1,0 +1,92 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user profile information and account balance.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the user (UID from Auth)." },
+        "name": { "type": "string", "description": "The display name of the user." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "handle": { "type": "string", "description": "The user's unique handle (e.g., @username)." },
+        "avatar": { "type": "string", "description": "URL to the user's avatar image." },
+        "location": { "type": "string", "description": "The user's current location node." },
+        "bio": { "type": "string", "description": "The user's biography." },
+        "interests": { "type": "array", "items": { "type": "string" }, "description": "List of user interests." },
+        "balance": { "type": "number", "description": "The user's current wallet balance." },
+        "joinedAt": { "type": "string", "format": "date-time", "description": "When the user joined the grid." },
+        "isVerified": { "type": "boolean", "description": "Whether the user is verified." },
+        "trustScore": { "type": "integer", "description": "The user's trust score on the grid." },
+        "role": { "type": "string", "enum": ["user", "admin"], "description": "The user's role." }
+      },
+      "required": ["id", "name", "email", "handle", "balance", "joinedAt", "role"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "A social post on the feed.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the post." },
+        "authorId": { "type": "string", "description": "The UID of the post author." },
+        "authorName": { "type": "string", "description": "The name of the post author." },
+        "content": { "type": "string", "description": "The text content of the post." },
+        "thumbnail": { "type": "string", "description": "URL to the post's media thumbnail." },
+        "likes": { "type": "integer", "description": "Number of likes on the post." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the post was created." }
+      },
+      "required": ["id", "authorId", "authorName", "content", "likes", "timestamp"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A message in a chat thread.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the message." },
+        "senderId": { "type": "string", "description": "The UID of the sender." },
+        "receiverId": { "type": "string", "description": "The UID of the receiver." },
+        "text": { "type": "string", "description": "The text content of the message." },
+        "type": { "type": "string", "enum": ["text", "image", "video", "file", "money"], "description": "The type of message." },
+        "mediaUrl": { "type": "string", "description": "URL to any media attachment." },
+        "fileName": { "type": "string", "description": "Name of the attached file." },
+        "amount": { "type": "number", "description": "Amount of money sent (if type is money)." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the message was sent." },
+        "status": { "type": "string", "enum": ["sent", "delivered", "read"], "description": "Message delivery status." }
+      },
+      "required": ["id", "senderId", "receiverId", "type", "timestamp"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A wallet transaction record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the transaction." },
+        "userId": { "type": "string", "description": "The UID of the user this transaction belongs to." },
+        "amount": { "type": "number", "description": "The transaction amount." },
+        "type": { "type": "string", "enum": ["inbound", "outbound"], "description": "Direction of the transaction." },
+        "description": { "type": "string", "description": "Description of the transaction." },
+        "status": { "type": "string", "enum": ["completed", "pending"], "description": "Transaction status." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the transaction occurred." }
+      },
+      "required": ["id", "userId", "amount", "type", "description", "status", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Collection of user profiles."
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Collection of social feed posts."
+    },
+    "/chats/{chatId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Messages within a specific chat thread."
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Transaction history for a user."
+    }
+  }
+}

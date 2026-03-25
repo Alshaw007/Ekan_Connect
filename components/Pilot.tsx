@@ -1,16 +1,32 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, Send, Mic, MoreHorizontal, ShieldCheck, Globe, Search, ArrowRight } from './Icons';
+import { Sparkles, Send, Mic, MoreHorizontal, ShieldCheck, Globe, Search, ArrowRight, Languages, BookOpen } from './Icons';
 import { EKAN_GRADIENT_CSS } from '../constants';
 import { EKANPilotService } from '../services/gemini';
+import { useFirebase } from './FirebaseProvider';
 
 const Pilot: React.FC = () => {
-  const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; text: string }[]>([
-    { role: 'assistant', text: "EKAN-Pilot active. I've successfully synchronized with your regional node. I can provide factual analytics on your Grid Trust Score, translate Bridge transmissions in 100+ languages, or verify Marketplace manifests for protocol safety. What shall we bridge today?" }
-  ]);
+  const { profile } = useFirebase();
+  const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; text: string }[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (profile && messages.length === 0) {
+      setMessages([
+        { 
+          role: 'assistant', 
+          text: `EKAN-Pilot active. I've synchronized with your node in ${profile.location}. 
+          
+I see you're learning ${profile.learningLanguages?.join(', ')}. I can provide real-time translations, suggest learning paths based on your interests in ${profile.interests?.join(', ')}, or verify marketplace manifests. 
+
+What shall we bridge today?` 
+        }
+      ]);
+    }
+  }, [profile]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -26,17 +42,33 @@ const Pilot: React.FC = () => {
     setMessages(prev => [...prev, { role: 'user', text: textToSend }]);
     
     setIsTyping(true);
-    // Real-world AI call using Gemini API
-    const aiResponse = await EKANPilotService.getResponse(textToSend);
-    setMessages(prev => [...prev, { role: 'assistant', text: aiResponse }]);
-    setIsTyping(false);
+    try {
+      const aiResponse = await EKANPilotService.getResponse(textToSend, profile);
+      setMessages(prev => [...prev, { role: 'assistant', text: aiResponse }]);
+    } catch (error) {
+      console.error("AI Error:", error);
+      setMessages(prev => [...prev, { role: 'assistant', text: "I encountered a resonance interference. Please try again." }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const toggleListening = () => {
+    setIsListening(!isListening);
+    // In a real app, we'd use the Web Speech API here
+    if (!isListening) {
+      setTimeout(() => {
+        setIsListening(false);
+        handleSend("Translate 'How are you' to Mandarin");
+      }, 2000);
+    }
   };
 
   const actionableCommands = [
-    { label: "Summarize Feed", icon: Sparkles, color: "text-gold" },
-    { label: "Market Safety Check", icon: ShieldCheck, color: "text-green-500" },
     { label: "Translate Chat", icon: Globe, color: "text-blue-500" },
-    { label: "Find Opportunities", icon: Search, color: "text-red-500" }
+    { label: "Learning Path", icon: BookOpen, color: "text-emerald-500" },
+    { label: "Market Safety", icon: ShieldCheck, color: "text-green-500" },
+    { label: "Find Opps", icon: Search, color: "text-red-500" }
   ];
 
   return (
@@ -120,14 +152,19 @@ const Pilot: React.FC = () => {
         </div>
 
         <div className="bg-white/5 backdrop-blur-[50px] p-4 rounded-[4rem] border border-white/10 shadow-[0_30px_70px_rgba(0,0,0,0.7)] flex items-center space-x-4 group focus-within:border-gold/30 transition-all duration-700">
-          <button className="p-7 text-gray-500 hover:text-gold transition-all hover:scale-110"><Mic size={32} /></button>
+          <button 
+            onClick={toggleListening}
+            className={`p-7 rounded-full transition-all hover:scale-110 ${isListening ? 'bg-red-500 text-white animate-pulse' : 'text-gray-500 hover:text-gold'}`}
+          >
+            <Mic size={32} />
+          </button>
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             placeholder="Talk to your Digital Concierge..."
-            className="flex-1 bg-transparent px-4 py-5 text-xl font-medium focus:outline-none placeholder:text-gray-800 tracking-tight"
+            className="flex-1 bg-transparent px-4 py-5 text-xl font-medium focus:outline-none placeholder:text-gray-800 tracking-tight text-white"
           />
           <button 
             onClick={() => handleSend()}
