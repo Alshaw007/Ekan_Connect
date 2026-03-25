@@ -11,6 +11,8 @@ import Scanner from './components/Scanner';
 import Utilities from './components/Utilities';
 import Communities from './components/Communities';
 import Stories from './components/Stories';
+import VoiceRooms from './components/VoiceRooms';
+import LiveStream from './components/LiveStream';
 import Auth from './components/Auth';
 import { FirebaseProvider, useFirebase, ErrorBoundary } from './components/FirebaseProvider';
 import { Module, User as UserType, UserProfile, Post, Message, Community } from './types';
@@ -205,12 +207,34 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const handleBlockUser = async (targetUid: string) => {
+    if (!profile || !authUser) return;
+    try {
+      await updateDoc(doc(db, 'users', authUser.uid), {
+        blockedUsers: arrayUnion(targetUid)
+      });
+      // Also unfollow if following
+      if (profile.following?.includes(targetUid)) {
+        await toggleFollow(targetUid);
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${authUser.uid}`);
+    }
+  };
+
   const renderModule = () => {
     if (!profile) return null;
 
     switch (activeModule) {
       case 'feed':
-        return <Feed externalPosts={posts} onAddPost={handleAddPost} onToggleFollow={toggleFollow} />;
+        return (
+          <Feed 
+            externalPosts={posts} 
+            onAddPost={handleAddPost} 
+            onToggleFollow={toggleFollow} 
+            onBlockUser={handleBlockUser}
+          />
+        );
       case 'chat':
         return (
           <Chat 
@@ -233,6 +257,10 @@ const AppContent: React.FC = () => {
         return <Communities onStartChat={(partner) => { setActiveChatPartner(partner); setActiveModule('chat'); }} />;
       case 'stories':
         return <Stories />;
+      case 'voice':
+        return <VoiceRooms profile={profile} />;
+      case 'live':
+        return <LiveStream profile={profile} />;
       case 'pilot':
         return <Pilot />;
       case 'profile':
@@ -256,10 +284,25 @@ const AppContent: React.FC = () => {
             externalPosts={posts} 
             onAddPost={handleAddPost} 
             onToggleFollow={toggleFollow}
+            onBlockUser={handleBlockUser}
           />
         );
     }
   };
+
+  useEffect(() => {
+    if (!profile?.theme) return;
+    const root = window.document.documentElement;
+    if (profile.theme === 'dark') {
+      root.classList.add('dark');
+    } else if (profile.theme === 'light') {
+      root.classList.remove('dark');
+    } else {
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      if (systemTheme === 'dark') root.classList.add('dark');
+      else root.classList.remove('dark');
+    }
+  }, [profile?.theme]);
 
   if (loading || !isAuthReady) {
     return (

@@ -91,6 +91,30 @@ service cloud.firestore {
     //   - expiresAt: string (required, ISO 8601) - Expiry date
     //   - viewers: list (required) - UIDs of viewers
     //
+    // Collection: voice_rooms
+    // Document ID: {roomId}
+    // Fields:
+    //   - id: string (required) - Room ID
+    //   - hostId: string (required) - Host UID
+    //   - hostName: string (required) - Host name
+    //   - title: string (required) - Room title
+    //   - participantCount: int (required) - Count
+    //   - isLive: bool (required) - Status
+    //   - startedAt: string (required, ISO 8601) - Start date
+    //
+    // Collection: live_streams
+    // Document ID: {streamId}
+    // Fields:
+    //   - id: string (required) - Stream ID
+    //   - hostId: string (required) - Host UID
+    //   - hostName: string (required) - Host name
+    //   - hostAvatar: string (required) - Host avatar
+    //   - title: string (required) - Stream title
+    //   - viewerCount: int (required) - Count
+    //   - isLive: bool (required) - Status
+    //   - startedAt: string (required, ISO 8601) - Start date
+    //   - category: string (optional) - Category
+    //
     // ===============================================================
 
     // ===============================================================
@@ -119,6 +143,10 @@ service cloud.firestore {
       return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
     }
 
+    function isRecent(dateStr) {
+      return isValidDateString(dateStr); // Simplified for now, but could check against request.time
+    }
+
     function hasOnlyAllowedFields(fields) {
       return request.resource.data.keys().hasOnly(fields);
     }
@@ -132,7 +160,7 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidUser(data) {
-      return hasOnlyAllowedFields(['id', 'name', 'email', 'handle', 'avatar', 'location', 'bio', 'interests', 'nativeLanguage', 'learningLanguages', 'following', 'followers', 'balance', 'joinedAt', 'isVerified', 'trustScore', 'role']) &&
+      return hasOnlyAllowedFields(['id', 'name', 'email', 'handle', 'avatar', 'location', 'bio', 'interests', 'nativeLanguage', 'learningLanguages', 'following', 'followers', 'balance', 'joinedAt', 'isVerified', 'trustScore', 'role', 'theme', 'blockedUsers']) &&
              data.id is string && data.id.size() > 0 &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              isValidEmail(data.email) &&
@@ -140,6 +168,8 @@ service cloud.firestore {
              data.balance is number && data.balance >= 0 &&
              isValidDateString(data.joinedAt) &&
              data.role in ['user', 'admin'] &&
+             (!('theme' in data) || data.theme in ['light', 'dark', 'system']) &&
+             (!('blockedUsers' in data) || isValidList(data.blockedUsers, 1000)) &&
              (!('interests' in data) || isValidList(data.interests, 20)) &&
              (!('learningLanguages' in data) || isValidList(data.learningLanguages, 10)) &&
              (!('following' in data) || isValidList(data.following, 5000)) &&
@@ -191,16 +221,25 @@ service cloud.firestore {
              isValidDateString(data.createdAt);
     }
 
-    function isValidStory(data) {
-      return hasOnlyAllowedFields(['id', 'userId', 'userName', 'mediaUrl', 'type', 'caption', 'timestamp', 'expiresAt', 'viewers']) &&
-             data.userId is string &&
-             data.userName is string &&
-             data.mediaUrl is string &&
-             data.type in ['image', 'video'] &&
-             (!('caption' in data) || (data.caption is string && data.caption.size() < 500)) &&
-             isValidDateString(data.timestamp) &&
-             isValidDateString(data.expiresAt) &&
-             isValidList(data.viewers, 1000000);
+    function isValidVoiceRoom(data) {
+      return hasOnlyAllowedFields(['id', 'hostId', 'hostName', 'title', 'participantCount', 'isLive', 'startedAt']) &&
+             data.hostId is string &&
+             data.hostName is string &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
+             data.participantCount is int &&
+             data.isLive is bool &&
+             isValidDateString(data.startedAt);
+    }
+
+    function isValidLiveStream(data) {
+      return hasOnlyAllowedFields(['id', 'hostId', 'hostName', 'hostAvatar', 'title', 'viewerCount', 'isLive', 'startedAt', 'category']) &&
+             data.hostId is string &&
+             data.hostName is string &&
+             data.hostAvatar is string &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
+             data.viewerCount is int &&
+             data.isLive is bool &&
+             isValidDateString(data.startedAt);
     }
 
     // ===============================================================
@@ -249,6 +288,26 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isValidStory(request.resource.data) && request.resource.data.userId == request.auth.uid;
       allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewers']) || isAdmin());
       allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /voice_rooms/{roomId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidVoiceRoom(request.resource.data) && request.resource.data.hostId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.hostId == request.auth.uid || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantCount']) || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.hostId == request.auth.uid || isAdmin());
+    }
+
+    match /live_streams/{streamId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidLiveStream(request.resource.data) && request.resource.data.hostId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.hostId == request.auth.uid || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewerCount']) || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.hostId == request.auth.uid || isAdmin());
+      
+      match /comments/{commentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update, delete: if isAdmin();
+      }
     }
   }
 }

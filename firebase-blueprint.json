@@ -3,7 +3,7 @@
   "entities": {
     "UserProfile": {
       "title": "User Profile",
-      "description": "Stores user profile information and account balance.",
+      "description": "Stores user profile information, account balance, and settings.",
       "type": "object",
       "properties": {
         "id": { "type": "string", "description": "The unique ID of the user (UID from Auth)." },
@@ -18,9 +18,62 @@
         "joinedAt": { "type": "string", "format": "date-time", "description": "When the user joined the grid." },
         "isVerified": { "type": "boolean", "description": "Whether the user is verified." },
         "trustScore": { "type": "integer", "description": "The user's trust score on the grid." },
-        "role": { "type": "string", "enum": ["user", "admin"], "description": "The user's role." }
+        "role": { "type": "string", "enum": ["user", "admin"], "description": "The user's role." },
+        "theme": { "type": "string", "enum": ["light", "dark", "system"], "description": "User's theme preference." },
+        "blockedUsers": { "type": "array", "items": { "type": "string" }, "description": "List of blocked user UIDs." },
+        "following": { "type": "array", "items": { "type": "string" }, "description": "List of UIDs the user follows." },
+        "followers": { "type": "array", "items": { "type": "string" }, "description": "List of UIDs following the user." },
+        "nativeLanguage": { "type": "string", "description": "User's native language." },
+        "learningLanguages": { "type": "array", "items": { "type": "string" }, "description": "Languages the user is learning." }
       },
       "required": ["id", "name", "email", "handle", "balance", "joinedAt", "role"]
+    },
+    "Community": {
+      "title": "Community",
+      "description": "A group or community on the grid.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the community." },
+        "name": { "type": "string", "description": "The name of the community." },
+        "description": { "type": "string", "description": "The description of the community." },
+        "avatar": { "type": "string", "description": "URL to the community's avatar image." },
+        "memberCount": { "type": "integer", "description": "Number of members in the community." },
+        "isPrivate": { "type": "boolean", "description": "Whether the community is private." },
+        "category": { "type": "string", "description": "The category of the community." }
+      },
+      "required": ["id", "name", "description", "memberCount", "isPrivate"]
+    },
+    "VoiceRoom": {
+      "title": "Voice Room",
+      "description": "A live audio room.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the voice room." },
+        "hostId": { "type": "string", "description": "The UID of the room host." },
+        "hostName": { "type": "string", "description": "The name of the room host." },
+        "title": { "type": "string", "description": "The title of the voice room." },
+        "participantCount": { "type": "integer", "description": "Number of participants in the room." },
+        "isLive": { "type": "boolean", "description": "Whether the room is currently live." },
+        "startedAt": { "type": "string", "format": "date-time", "description": "When the room was started." }
+      },
+      "required": ["id", "hostId", "hostName", "title", "participantCount", "isLive", "startedAt"]
+    },
+    "LiveStream": {
+      "title": "Live Stream",
+      "description": "A live video stream.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the live stream." },
+        "hostId": { "type": "string", "description": "The UID of the stream host." },
+        "hostName": { "type": "string", "description": "The name of the stream host." },
+        "hostAvatar": { "type": "string", "description": "URL to the host's avatar." },
+        "title": { "type": "string", "description": "The title of the live stream." },
+        "viewerCount": { "type": "integer", "description": "Number of viewers in the stream." },
+        "isLive": { "type": "boolean", "description": "Whether the stream is currently live." },
+        "startedAt": { "type": "string", "format": "date-time", "description": "When the stream was started." },
+        "category": { "type": "string", "description": "The category of the stream." }
+      },
+      "required": ["id", "hostId", "hostName", "title", "viewerCount", "isLive", "startedAt"]
     },
     "Post": {
       "title": "Post",
@@ -87,6 +140,18 @@
     "/users/{userId}/transactions/{transactionId}": {
       "schema": "Transaction",
       "description": "Transaction history for a user."
+    },
+    "/communities/{communityId}": {
+      "schema": "Community",
+      "description": "Collection of communities."
+    },
+    "/voice_rooms/{roomId}": {
+      "schema": "VoiceRoom",
+      "description": "Active voice rooms."
+    },
+    "/live_streams/{streamId}": {
+      "schema": "LiveStream",
+      "description": "Active live streams."
     }
   }
 }

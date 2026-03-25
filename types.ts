@@ -1,5 +1,5 @@
 
-export type Module = 'feed' | 'chat' | 'gathering' | 'wallet' | 'pilot' | 'profile' | 'scanner' | 'utilities' | 'communities' | 'stories';
+export type Module = 'feed' | 'chat' | 'gathering' | 'wallet' | 'pilot' | 'profile' | 'scanner' | 'utilities' | 'communities' | 'stories' | 'voice' | 'live';
 
 export type UserRole = 'user' | 'admin';
 
@@ -22,6 +22,8 @@ export interface UserProfile {
   following?: string[];
   followers?: string[];
   contacts?: string[]; // Synced contacts (phone numbers or emails)
+  blockedUsers?: string[]; // UIDs
+  theme?: 'dark' | 'light' | 'system';
 }
 
 export interface Community {
@@ -36,6 +38,40 @@ export interface Community {
   category: string;
   createdAt: string;
   managedByPilot?: boolean;
+}
+
+export interface VoiceRoom {
+  id: string;
+  title: string;
+  hostId: string;
+  hostName: string;
+  hostAvatar: string;
+  participants: string[]; // UIDs
+  speakers: string[]; // UIDs
+  category: string;
+  isLive: boolean;
+  createdAt: string;
+  viewerCount: number;
+}
+
+export interface LiveStream {
+  id: string;
+  hostId: string;
+  hostName: string;
+  hostAvatar: string;
+  title: string;
+  viewerCount: number;
+  isLive: boolean;
+  startedAt: string;
+  category: string;
+  streamUrl?: string; // For simulation
+}
+
+export interface Gift {
+  id: string;
+  name: string;
+  icon: string;
+  price: number;
 }
 
 export interface Story {

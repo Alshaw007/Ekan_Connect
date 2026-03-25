@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Globe, Star, Plus, MessageCircle, X, Sparkles, ShieldCheck, ImageIcon, Camera, UserPlus, UserCheck } from './Icons';
+import { Search, Globe, Star, Plus, MessageCircle, X, Sparkles, ShieldCheck, ImageIcon, Camera, UserPlus, UserCheck, Ban } from './Icons';
 import { EKAN_GRADIENT_CSS } from '../constants';
 import { Post, UserProfile } from '../types';
 import { useFirebase } from './FirebaseProvider';
@@ -11,9 +11,10 @@ interface FeedProps {
   externalPosts: Post[];
   onAddPost: (content: string) => void;
   onToggleFollow: (targetUid: string) => void;
+  onBlockUser: (targetUid: string) => void;
 }
 
-const Feed: React.FC<FeedProps> = ({ externalPosts, onAddPost, onToggleFollow }) => {
+const Feed: React.FC<FeedProps> = ({ externalPosts, onAddPost, onToggleFollow, onBlockUser }) => {
   const { profile } = useFirebase();
   const [category, setCategory] = useState<'Following' | 'Discover' | 'Global'>('Following');
   const [postInput, setPostInput] = useState('');
@@ -42,7 +43,7 @@ const Feed: React.FC<FeedProps> = ({ externalPosts, onAddPost, onToggleFollow })
       const users: UserProfile[] = [];
       querySnapshot.forEach((doc) => {
         const userData = doc.data() as UserProfile;
-        if (userData.id !== profile?.id) {
+        if (userData.id !== profile?.id && !profile?.blockedUsers?.includes(userData.id)) {
           users.push(userData);
         }
       });
@@ -61,6 +62,9 @@ const Feed: React.FC<FeedProps> = ({ externalPosts, onAddPost, onToggleFollow })
   };
 
   const filteredPosts = externalPosts.filter(post => {
+    // Filter out blocked users
+    if (profile?.blockedUsers?.includes(post.authorId)) return false;
+
     if (category === 'Following') {
       return profile?.following?.includes(post.authorId) || post.authorId === profile?.id;
     }
@@ -188,7 +192,18 @@ const Feed: React.FC<FeedProps> = ({ externalPosts, onAddPost, onToggleFollow })
                           </p>
                        </div>
                     </div>
-                    <div className="p-3 bg-white/5 rounded-2xl text-gray-600 hover:text-white transition-all cursor-pointer"><Star size={20} /></div>
+                    <div className="flex items-center space-x-2">
+                      <div className="p-3 bg-white/5 rounded-2xl text-gray-600 hover:text-white transition-all cursor-pointer"><Star size={20} /></div>
+                      {post.authorId !== profile?.id && (
+                        <button 
+                          onClick={() => onBlockUser(post.authorId)}
+                          className="p-3 bg-white/5 rounded-2xl text-red-500/50 hover:text-red-500 hover:bg-red-500/10 transition-all"
+                          title="Block Node"
+                        >
+                          <Ban size={20} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <p className="text-lg text-gray-300 leading-relaxed font-medium mb-8 tracking-tight px-2">{post.content}</p>
                   {post.thumbnail && (

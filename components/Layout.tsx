@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Home, MessageCircle, Calendar, Wallet, Sparkles, User, Bell, Globe, Search, Scan, Zap, Users, Activity } from './Icons';
+import { Home, MessageCircle, Calendar, Wallet, Sparkles, User, Bell, Globe, Search, Scan, Zap, Users, Activity, Mic, Video } from './Icons';
 import { Module, LocalizationData } from '../types';
 import { COLORS, VaiPattern, KruPattern, EKAN_GRADIENT_CSS } from '../constants';
 
@@ -35,6 +35,8 @@ const Layout: React.FC<LayoutProps> = ({ activeModule, setActiveModule, children
     { id: 'stories', icon: Activity, label: 'Status' },
     { id: 'chat', icon: MessageCircle, label: 'Chat' },
     { id: 'communities', icon: Users, label: 'Groups' },
+    { id: 'voice', icon: Mic, label: 'Voice' },
+    { id: 'live', icon: Video, label: 'Live' },
     { id: 'gathering', icon: Calendar, label: 'Gather' },
     { id: 'utilities', icon: Zap, label: 'Utilities' },
     { id: 'wallet', icon: Wallet, label: 'Wallet' },

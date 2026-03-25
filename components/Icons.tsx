@@ -51,7 +51,18 @@ import {
   UserCheck,
   Users,
   Activity,
-  Loader2
+  Loader2,
+  MicOff,
+  Hand,
+  Gift,
+  Heart,
+  Share2,
+  Check,
+  Moon,
+  Sun,
+  Monitor,
+  Ban,
+  VideoOff
 } from 'lucide-react';
 
 export {
@@ -105,5 +116,16 @@ export {
   UserCheck,
   Users,
   Activity,
-  Loader2
+  Loader2,
+  MicOff,
+  Hand,
+  Gift,
+  Heart,
+  Share2,
+  Check,
+  Moon,
+  Sun,
+  Monitor,
+  Ban,
+  VideoOff
 };
