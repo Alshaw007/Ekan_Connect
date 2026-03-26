@@ -108,7 +108,7 @@ const getLocInfo = (countryCode: string) => {
 };
 
 const Auth: React.FC<AuthProps> = ({ onComplete }) => {
-  const [step, setStep] = useState<'welcome' | 'email' | 'phone' | 'wechat' | 'setup' | 'success'>('welcome');
+  const [step, setStep] = useState<'welcome' | 'email' | 'phone' | 'otp' | 'setup' | 'success'>('welcome');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [name, setName] = useState('');
@@ -198,14 +198,59 @@ const Auth: React.FC<AuthProps> = ({ onComplete }) => {
       setStep('success'); // Show success message that link was sent
     } catch (err: any) {
       console.error("Send Link Error:", err);
-      setError(err.message);
+      if (err.code === 'auth/operation-not-allowed') {
+        setError("Email Link authentication is not enabled in your Firebase Console. Please enable it under Authentication > Sign-in method > Email/Password > Email link (passwordless sign-in).");
+      } else {
+        setError(err.message);
+      }
     } finally {
       setIsVerifying(false);
     }
   };
 
   const handlePhoneLogin = async () => {
-    setStep('setup');
+    if (phoneNumber.length < 8) return;
+    setIsVerifying(true);
+    try {
+      // In a real app, we'd use signInWithPhoneNumber with Recaptcha
+      // For this environment, we'll simulate the OTP step
+      setTimeout(() => {
+        setStep('otp');
+        setIsVerifying(false);
+      }, 1500);
+    } catch (err: any) {
+      setError(err.message);
+      setIsVerifying(false);
+    }
+  };
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (value.length > 1) value = value[value.length - 1];
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-${index + 1}`);
+      nextInput?.focus();
+    }
+  };
+
+  const handleOtpSubmit = async () => {
+    const code = otp.join('');
+    if (code.length < 6) return;
+    setIsVerifying(true);
+    try {
+      // Simulate verification
+      setTimeout(() => {
+        setStep('setup');
+        setIsVerifying(false);
+      }, 1500);
+    } catch (err: any) {
+      setError(err.message);
+      setIsVerifying(false);
+    }
   };
 
   const toggleInterest = (interest: string) => {
@@ -303,10 +348,16 @@ const Auth: React.FC<AuthProps> = ({ onComplete }) => {
               </div>
               
               <div className="grid grid-cols-2 gap-4">
+                <button onClick={handleGoogleLogin} className="py-5 bg-white/5 border border-white/10 rounded-[2rem] flex items-center justify-center space-x-4 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all group">
+                  <Mail size={18} className="text-red-500 group-hover:scale-125 transition-transform" />
+                  <span>Google</span>
+                </button>
                 <button onClick={() => setStep('email')} className="py-5 bg-white/5 border border-white/10 rounded-[2rem] flex items-center justify-center space-x-4 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all group">
                   <Mail size={18} className="text-emerald-500 group-hover:scale-125 transition-transform" />
                   <span>Email</span>
                 </button>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
                 <button onClick={() => setStep('phone')} className="py-5 bg-white/5 border border-white/10 rounded-[2rem] flex items-center justify-center space-x-4 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all group">
                   <Smartphone size={18} className="text-blue-500 group-hover:scale-125 transition-transform" />
                   <span>Phone</span>
@@ -346,10 +397,14 @@ const Auth: React.FC<AuthProps> = ({ onComplete }) => {
               </div>
               <button 
                 onClick={handleEmailLogin}
-                disabled={!email.includes('@')}
+                disabled={!email.includes('@') || isVerifying}
                 className={`w-full py-8 bg-gradient-to-r ${EKAN_GRADIENT_CSS} text-black rounded-[2.8rem] font-black text-xs uppercase tracking-[0.5em] flex items-center justify-center space-x-4 shadow-[0_25px_60px_rgba(206,17,38,0.3)] disabled:opacity-20 transition-all active:scale-95`}
               >
-                <span>Authorize Transmission</span> <ArrowRight size={20} />
+                {isVerifying ? (
+                  <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <><span>Authorize Transmission</span> <ArrowRight size={20} /></>
+                )}
               </button>
             </div>
           </div>
@@ -378,11 +433,56 @@ const Auth: React.FC<AuthProps> = ({ onComplete }) => {
               </div>
               <button 
                 onClick={handlePhoneLogin}
-                disabled={phoneNumber.length < 8}
+                disabled={phoneNumber.length < 8 || isVerifying}
                 className={`w-full py-8 bg-gradient-to-r ${EKAN_GRADIENT_CSS} text-black rounded-[2.8rem] font-black text-xs uppercase tracking-[0.5em] flex items-center justify-center space-x-4 shadow-[0_25px_60px_rgba(206,17,38,0.3)] disabled:opacity-20 transition-all active:scale-95`}
               >
-                <span>Authorize Transmission</span> <ArrowRight size={20} />
+                {isVerifying ? (
+                  <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <><span>Authorize Transmission</span> <ArrowRight size={20} /></>
+                )}
               </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'otp' && (
+          <div className="space-y-12 animate-in fade-in slide-in-from-right-12 duration-700">
+            <button onClick={() => setStep('phone')} className="text-gray-600 hover:text-white transition-colors text-[11px] font-black uppercase tracking-[0.4em] flex items-center space-x-3">
+              <ArrowRight size={16} className="rotate-180" /> <span>Back to Phone</span>
+            </button>
+            <div className="space-y-6">
+              <h2 className="text-5xl font-black tracking-tighter text-white">Verification</h2>
+              <p className="text-lg text-gray-500 font-medium leading-relaxed">Enter the 6-digit resonance code sent to your node.</p>
+            </div>
+            <div className="space-y-10">
+              <div className="flex justify-between gap-3">
+                {otp.map((digit, idx) => (
+                  <input
+                    key={idx}
+                    id={`otp-${idx}`}
+                    type="text"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(idx, e.target.value)}
+                    className="w-14 h-20 bg-white/[0.02] border border-white/10 rounded-2xl text-center text-2xl font-black text-white focus:outline-none focus:border-gold/50 transition-all shadow-inner"
+                  />
+                ))}
+              </div>
+              <button 
+                onClick={handleOtpSubmit}
+                disabled={otp.join('').length < 6 || isVerifying}
+                className={`w-full py-8 bg-gradient-to-r ${EKAN_GRADIENT_CSS} text-black rounded-[2.8rem] font-black text-xs uppercase tracking-[0.5em] flex items-center justify-center space-x-4 shadow-[0_25px_60px_rgba(206,17,38,0.3)] disabled:opacity-20 transition-all active:scale-95`}
+              >
+                {isVerifying ? (
+                  <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <><span>Verify Resonance</span> <ShieldCheck size={20} /></>
+                )}
+              </button>
+              <div className="text-center">
+                <button onClick={handlePhoneLogin} className="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-gold transition-colors">Resend Code</button>
+              </div>
             </div>
           </div>
         )}
