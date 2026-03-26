@@ -111,7 +111,7 @@ const VoiceRooms: React.FC<VoiceRoomsProps> = ({ profile }) => {
 
   const handleSendGift = async (gift: Gift) => {
     if (!activeRoom || !profile || profile.balance < gift.price) {
-      alert('Insufficient balance');
+      console.warn('Insufficient balance');
       return;
     }
     try {
@@ -127,7 +127,7 @@ const VoiceRooms: React.FC<VoiceRoomsProps> = ({ profile }) => {
         balance: arrayUnion({ amount: gift.price, from: profile.name, gift: gift.name }) // This is a simplified simulation
       });
 
-      alert(`Sent ${gift.name} to ${activeRoom.hostName}!`);
+      console.log(`Sent ${gift.name} to ${activeRoom.hostName}!`);
       setShowGifts(false);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'gifting');

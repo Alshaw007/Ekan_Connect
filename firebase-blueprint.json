@@ -97,16 +97,49 @@
       "properties": {
         "id": { "type": "string", "description": "The unique ID of the message." },
         "senderId": { "type": "string", "description": "The UID of the sender." },
-        "receiverId": { "type": "string", "description": "The UID of the receiver." },
+        "receiverId": { "type": "string", "description": "The UID of the receiver (user or group)." },
         "text": { "type": "string", "description": "The text content of the message." },
-        "type": { "type": "string", "enum": ["text", "image", "video", "file", "money"], "description": "The type of message." },
+        "type": { "type": "string", "enum": ["text", "image", "video", "file", "money", "voice_memo", "video_memo", "call"], "description": "The type of message." },
         "mediaUrl": { "type": "string", "description": "URL to any media attachment." },
         "fileName": { "type": "string", "description": "Name of the attached file." },
         "amount": { "type": "number", "description": "Amount of money sent (if type is money)." },
         "timestamp": { "type": "string", "format": "date-time", "description": "When the message was sent." },
-        "status": { "type": "string", "enum": ["sent", "delivered", "read"], "description": "Message delivery status." }
+        "status": { "type": "string", "enum": ["sent", "delivered", "read"], "description": "Message delivery status." },
+        "callId": { "type": "string", "description": "The call ID if type is call." }
       },
       "required": ["id", "senderId", "receiverId", "type", "timestamp"]
+    },
+    "ChatThread": {
+      "title": "Chat Thread",
+      "description": "Metadata for a direct or group chat thread.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the thread." },
+        "type": { "type": "string", "enum": ["direct", "group"], "description": "The type of thread." },
+        "name": { "type": "string", "description": "The name of the group chat." },
+        "avatar": { "type": "string", "description": "The avatar of the group chat." },
+        "members": { "type": "array", "items": { "type": "string" }, "description": "List of member UIDs." },
+        "lastMessage": { "type": "string", "description": "The last message text." },
+        "lastMessageSenderId": { "type": "string", "description": "The UID of the last message sender." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the last message was sent." },
+        "typing": { "type": "object", "description": "Map of UID to typing status." }
+      },
+      "required": ["id", "type", "members", "timestamp"]
+    },
+    "Call": {
+      "title": "Call",
+      "description": "A record of an audio or video call.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the call." },
+        "callerId": { "type": "string", "description": "The UID of the caller." },
+        "receiverId": { "type": "string", "description": "The UID of the receiver." },
+        "type": { "type": "string", "enum": ["audio", "video"], "description": "The type of call." },
+        "status": { "type": "string", "enum": ["ringing", "ongoing", "ended", "missed", "rejected"], "description": "The call status." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the call started." },
+        "duration": { "type": "number", "description": "The duration of the call in seconds." }
+      },
+      "required": ["id", "callerId", "receiverId", "type", "status", "timestamp"]
     },
     "Transaction": {
       "title": "Transaction",
@@ -140,6 +173,14 @@
     "/users/{userId}/transactions/{transactionId}": {
       "schema": "Transaction",
       "description": "Transaction history for a user."
+    },
+    "/threads/{threadId}": {
+      "schema": "ChatThread",
+      "description": "Metadata for chat threads."
+    },
+    "/calls/{callId}": {
+      "schema": "Call",
+      "description": "Call records and signaling."
     },
     "/communities/{communityId}": {
       "schema": "Community",

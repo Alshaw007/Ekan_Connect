@@ -113,14 +113,27 @@ export interface Post {
   timestamp: string;
 }
 
-export type MessageType = 'text' | 'image' | 'video' | 'file' | 'money';
+export type MessageType = 'text' | 'image' | 'video' | 'file' | 'money' | 'voice_memo' | 'video_memo' | 'call';
+
+export interface Call {
+  id: string;
+  callerId: string;
+  callerName: string;
+  callerAvatar: string;
+  receiverId: string;
+  type: 'audio' | 'video';
+  status: 'ringing' | 'ongoing' | 'ended' | 'missed' | 'rejected';
+  timestamp: string;
+  duration?: number;
+  channelId: string; // For WebRTC signaling
+}
 
 export interface Message {
   id: string;
   senderId: string;
   senderName?: string;
   senderAvatar?: string;
-  receiverId: string;
+  receiverId: string; // Can be a UID or a Group ID
   text?: string;
   type: MessageType;
   mediaUrl?: string;
@@ -130,15 +143,23 @@ export interface Message {
   translatedText?: string;
   isVoice?: boolean;
   status?: 'sent' | 'delivered' | 'read';
+  callId?: string; // If type is 'call'
+  duration?: number; // For voice/video memos
 }
 
 export interface ChatThread {
   id: string;
-  partner: User | Community;
+  type: 'direct' | 'group';
+  name?: string; // For group chats
+  avatar?: string; // For group chats
+  members: string[]; // UIDs
+  partner?: User | Community; // For direct chats (legacy support)
   lastMessage: string;
+  lastMessageSenderId?: string;
   timestamp: string;
   unreadCount: number;
   online?: boolean;
+  typing?: Record<string, boolean>; // UID -> isTyping
 }
 
 export interface Transaction {

@@ -55,7 +55,7 @@ const Profile: React.FC<ProfileProps> = ({ user, posts, onLogout }) => {
           await updateDoc(ref, {
             contacts: arrayUnion('contact_1', 'contact_2', 'contact_3')
           });
-          alert('Contacts Synchronized with the Grid.');
+          console.log('Contacts Synchronized with the Grid.');
         } catch (error) {
           handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser.uid}`);
         }

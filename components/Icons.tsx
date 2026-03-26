@@ -62,7 +62,8 @@ import {
   Sun,
   Monitor,
   Ban,
-  VideoOff
+  VideoOff,
+  Volume2
 } from 'lucide-react';
 
 export {
@@ -127,5 +128,6 @@ export {
   Sun,
   Monitor,
   Ban,
-  VideoOff
+  VideoOff,
+  Volume2
 };

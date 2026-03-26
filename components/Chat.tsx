@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Send, 
   Mic, 
@@ -16,7 +17,11 @@ import {
   PlayCircle,
   Paperclip,
   X,
-  Sparkles
+  Sparkles,
+  Users,
+  MicOff,
+  VideoOff,
+  Volume2
 } from './Icons';
 import { EKAN_GRADIENT_CSS } from '../constants';
 import { Message, User as UserType, ChatThread, MessageType, Community } from '../types';
@@ -56,6 +61,12 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
     'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3Y4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4eXh4JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1z/3o7TKv9QWQI2Z9zZ9u/giphy.gif'
   ];
 
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [groupName, setGroupName] = useState('');
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const handleEmojiClick = (emoji: string) => {
     setInputValue(prev => prev + emoji);
     setShowEmoji(false);
@@ -65,6 +76,117 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
     handleSend('image', { mediaUrl: stickerUrl });
     setShowStickers(false);
   };
+
+  const handleCreateGroup = async () => {
+    if (!groupName.trim() || selectedMembers.length === 0 || !authUser) return;
+
+    const newGroup: any = {
+      type: 'group',
+      name: groupName,
+      avatar: `https://picsum.photos/seed/${groupName}/200/200`,
+      participants: [authUser.uid, ...selectedMembers],
+      members: [authUser.uid, ...selectedMembers],
+      lastMessage: 'Group bridge established.',
+      timestamp: serverTimestamp(),
+      unreadCount: 0,
+      typing: {}
+    };
+
+    try {
+      const docRef = await addDoc(collection(db, 'threads'), newGroup);
+      setCurrentThread({ ...newGroup, id: docRef.id, partner: { id: docRef.id, name: groupName, avatar: newGroup.avatar, location: 'Global Node' } });
+      setShowCreateGroup(false);
+      setGroupName('');
+      setSelectedMembers([]);
+      setView('conversation');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'threads');
+    }
+  };
+
+  useEffect(() => {
+    if (!currentThread || !authUser) return;
+
+    if (inputValue.trim() && !isTyping) {
+      setIsTyping(true);
+      setDoc(doc(db, 'threads', currentThread.id), {
+        typing: { [authUser.uid]: true }
+      }, { merge: true });
+    } else if (!inputValue.trim() && isTyping) {
+      setIsTyping(false);
+      setDoc(doc(db, 'threads', currentThread.id), {
+        typing: { [authUser.uid]: false }
+      }, { merge: true });
+    }
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      if (isTyping) {
+        setIsTyping(false);
+        setDoc(doc(db, 'threads', currentThread.id), {
+          typing: { [authUser.uid]: false }
+        }, { merge: true });
+      }
+    }, 3000);
+
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, [inputValue, currentThread, authUser]);
+
+  const [isRecording, setIsRecording] = useState<'voice' | 'video' | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startRecording = (type: 'voice' | 'video') => {
+    setIsRecording(type);
+    setRecordingDuration(0);
+    recordingIntervalRef.current = setInterval(() => {
+      setRecordingDuration(prev => prev + 1);
+    }, 1000);
+  };
+
+  const stopRecording = (send: boolean = true) => {
+    if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+    if (send && isRecording) {
+      handleSend(isRecording === 'voice' ? 'voice_memo' : 'video_memo', { duration: recordingDuration });
+    }
+    setIsRecording(null);
+    setRecordingDuration(0);
+  };
+
+  const TypingIndicator = () => (
+    <div className="flex items-center space-x-3 p-5 bg-white/5 backdrop-blur-3xl rounded-[2.5rem] border border-white/10 w-fit animate-in fade-in slide-in-from-left-6 duration-700 shadow-2xl">
+      <div className="flex space-x-2">
+        {[0, 1, 2].map((i) => (
+          <motion.div
+            key={i}
+            animate={{ 
+              y: [0, -8, 0],
+              scale: [1, 1.5, 1],
+              opacity: [0.3, 1, 0.3],
+              boxShadow: [
+                '0 0 0px rgba(212, 175, 55, 0)',
+                '0 0 15px rgba(212, 175, 55, 0.8)',
+                '0 0 0px rgba(212, 175, 55, 0)'
+              ]
+            }}
+            transition={{ 
+              duration: 1, 
+              repeat: Infinity, 
+              delay: i * 0.2,
+              ease: "easeInOut"
+            }}
+            className="w-2.5 h-2.5 bg-gold rounded-full"
+          />
+        ))}
+      </div>
+      <div className="flex flex-col">
+        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gold animate-pulse">Neural Link Active</span>
+        <span className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-600">Transmitting Data...</span>
+      </div>
+    </div>
+  );
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -80,23 +202,55 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
   useEffect(() => {
     if (!authUser) return;
 
-    // In a real app, we'd query a 'threads' collection where user is participant.
-    // For now, let's just show users we can chat with.
-    const usersRef = collection(db, 'users');
-    const unsubscribe = onSnapshot(usersRef, (snapshot) => {
-      const otherUsers = snapshot.docs
-        .map(doc => ({ ...doc.data(), id: doc.id } as UserType))
-        .filter(u => u.id !== authUser.uid);
-      
-      const generatedThreads: ChatThread[] = otherUsers.map(u => ({
-        id: getChatId(authUser.uid, u),
-        partner: u,
-        lastMessage: 'Tap to start bridging...',
-        timestamp: new Date().toISOString(),
-        unreadCount: 0,
-        online: true
+    const threadsRef = collection(db, 'threads');
+    const q = query(threadsRef, where('participants', 'array-contains', authUser.uid), orderBy('timestamp', 'desc'));
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const fetchedThreads = await Promise.all(snapshot.docs.map(async (d) => {
+        const data = d.data();
+        // If it's a 1-on-1 chat, we need to fetch the partner's profile
+        let partner = data.partner;
+        if (data.type !== 'group' && data.participants) {
+          const partnerId = data.participants.find((id: string) => id !== authUser.uid);
+          if (partnerId) {
+            const partnerDoc = await getDoc(doc(db, 'users', partnerId));
+            if (partnerDoc.exists()) {
+              partner = { ...partnerDoc.data(), id: partnerId };
+            }
+          }
+        }
+        return {
+          ...data,
+          id: d.id,
+          partner
+        } as ChatThread;
       }));
-      setThreads(generatedThreads);
+      
+      if (fetchedThreads.length > 0) {
+        setThreads(fetchedThreads);
+      } else {
+        // Fallback to showing users if no threads exist
+        const usersRef = collection(db, 'users');
+        const unsubUsers = onSnapshot(usersRef, (uSnap) => {
+          const otherUsers = uSnap.docs
+            .map(doc => ({ ...doc.data(), id: doc.id } as UserType))
+            .filter(u => u.id !== authUser.uid);
+          
+          const generatedThreads: ChatThread[] = otherUsers.map(u => ({
+            id: getChatId(authUser.uid, u),
+            type: 'direct',
+            members: [authUser.uid, u.id],
+            partner: u,
+            lastMessage: 'Tap to start bridging...',
+            timestamp: new Date().toISOString(),
+            unreadCount: 0,
+            online: true,
+            participants: [authUser.uid, u.id]
+          } as ChatThread));
+          setThreads(generatedThreads);
+        });
+        return () => unsubUsers();
+      }
     });
 
     return () => unsubscribe();
@@ -133,6 +287,8 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
     if (activePartner && authUser) {
       const thread: ChatThread = { 
         id: getChatId(authUser.uid, activePartner), 
+        type: 'direct',
+        members: [authUser.uid, activePartner.id],
         partner: activePartner, 
         lastMessage: '', 
         timestamp: new Date().toISOString(), 
@@ -190,11 +346,21 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
       onUpdateBalance(-amt);
       setTransferAmount('');
       setShowTransfer(false);
-    } else if (type === 'image' || type === 'video') {
+    } else if (type === 'image' || type === 'video' || type === 'file') {
       newMessageData.mediaUrl = type === 'image' 
         ? `https://picsum.photos/seed/${Math.random()}/800/600`
-        : 'https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4';
+        : type === 'video' 
+          ? 'https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4'
+          : 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
       newMessageData.fileName = payload?.name || 'attachment';
+    } else if (type === 'voice_memo' || type === 'video_memo') {
+      newMessageData.mediaUrl = type === 'voice_memo' 
+        ? 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
+        : 'https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4';
+      newMessageData.duration = payload?.duration || 0;
+    } else if (type === 'call') {
+      newMessageData.callId = payload?.callId;
+      newMessageData.text = payload?.text || 'Call';
     } else {
       newMessageData.mediaUrl = 'https://picsum.photos/seed/ekan/400/300';
     }
@@ -235,10 +401,62 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
         <div className="p-12 pb-6 space-y-10">
           <div className="flex items-center justify-between">
             <h1 className="text-5xl font-black tracking-tighter text-white">Bridges</h1>
-            <button className={`p-5 bg-gradient-to-br ${EKAN_GRADIENT_CSS} rounded-[1.8rem] text-black shadow-2xl active:scale-95 transition-all`}>
-              <Plus size={28} strokeWidth={3} />
-            </button>
+            <div className="flex space-x-4">
+              <button 
+                onClick={() => setShowCreateGroup(true)}
+                className="p-5 bg-white/5 border border-white/10 rounded-[1.8rem] text-gold shadow-2xl active:scale-95 transition-all"
+              >
+                <Users size={28} strokeWidth={3} />
+              </button>
+              <button className={`p-5 bg-gradient-to-br ${EKAN_GRADIENT_CSS} rounded-[1.8rem] text-black shadow-2xl active:scale-95 transition-all`}>
+                <Plus size={28} strokeWidth={3} />
+              </button>
+            </div>
           </div>
+          
+          {showCreateGroup && (
+            <div className="bg-white/5 border border-white/10 rounded-[3rem] p-8 space-y-8 animate-in slide-in-from-top-10 duration-500 shadow-3xl">
+              <div className="flex justify-between items-center">
+                <h3 className="text-2xl font-black tracking-tighter text-white">Establish Group Node</h3>
+                <button onClick={() => setShowCreateGroup(false)} className="p-3 bg-white/5 rounded-full text-gray-500 hover:text-white transition-all"><X size={24} /></button>
+              </div>
+              <input 
+                type="text" 
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                placeholder="Group Node Name..." 
+                className="w-full bg-white/5 border border-white/10 rounded-[2rem] py-5 px-8 text-lg focus:outline-none focus:border-gold/30 transition-all placeholder:text-gray-800 text-white"
+              />
+              <div className="space-y-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-600 px-4">Select Participants</p>
+                <div className="flex flex-wrap gap-3">
+                  {threads.filter(t => t.type !== 'group').map(t => (
+                    <button
+                      key={t.partner.id}
+                      onClick={() => {
+                        setSelectedMembers(prev => 
+                          prev.includes(t.partner.id) ? prev.filter(id => id !== t.partner.id) : [...prev, t.partner.id]
+                        );
+                      }}
+                      className={`px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest border transition-all ${
+                        selectedMembers.includes(t.partner.id) 
+                        ? 'bg-gold border-gold text-black' 
+                        : 'bg-white/5 border-white/10 text-gray-500'
+                      }`}
+                    >
+                      {t.partner.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button 
+                onClick={handleCreateGroup}
+                className="w-full py-6 bg-emerald-600 text-white rounded-[2rem] font-black text-[13px] uppercase tracking-[0.5em] shadow-3xl active:scale-95 transition-all"
+              >
+                Establish Bridge
+              </button>
+            </div>
+          )}
           <div className="relative group">
             <Search size={24} className="absolute left-8 top-1/2 -translate-y-1/2 text-gray-700" />
             <input 
@@ -316,10 +534,14 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
             <h2 className="text-2xl font-black tracking-tighter text-white">{currentThread?.partner.name}</h2>
             <div className="flex items-center space-x-2">
                <span className="text-[10px] text-green-500 font-black uppercase tracking-[0.4em]">Grid Encryption Active</span>
+               {currentThread?.type === 'group' && <span className="text-[10px] text-gold font-black uppercase tracking-[0.4em]">• Group Node</span>}
             </div>
           </div>
         </div>
         <div className="flex space-x-5">
+            {currentThread?.type === 'group' && (
+              <button className="p-5 text-gray-500 hover:text-white transition-all bg-white/5 rounded-2xl"><Users size={24} /></button>
+            )}
             <button onClick={() => setCalling('audio')} className="p-5 text-gray-500 hover:text-white transition-all bg-white/5 rounded-2xl"><Phone size={24} /></button>
             <button onClick={() => setCalling('video')} className="p-5 text-gray-500 hover:text-white transition-all bg-white/5 rounded-2xl"><Video size={24} /></button>
         </div>
@@ -389,6 +611,43 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
                        </div>
                     </div>
                   )}
+                  {m.type === 'voice_memo' && (
+                    <div className="flex items-center space-x-6 p-6 bg-white/5 rounded-[2.5rem] border border-white/10 min-w-[240px]">
+                       <button className="w-14 h-14 rounded-full bg-gold/20 text-gold flex items-center justify-center hover:scale-110 transition-transform"><PlayCircle size={32} /></button>
+                       <div className="flex-1 space-y-2">
+                          <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+                             <div className="h-full bg-gold w-1/3"></div>
+                          </div>
+                          <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-gray-500">
+                             <span>0:00</span>
+                             <span>{Math.floor(m.duration! / 60)}:{String(m.duration! % 60).padStart(2, '0')}</span>
+                          </div>
+                       </div>
+                       <Mic size={20} className="text-gold/40" />
+                    </div>
+                  )}
+                  {m.type === 'video_memo' && (
+                    <div className="rounded-[2.5rem] overflow-hidden border border-white/10 relative group/video aspect-square w-64">
+                       <video src={m.mediaUrl} className="w-full h-full object-cover" />
+                       <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/video:opacity-100 transition-opacity">
+                         <PlayCircle size={48} className="text-white" />
+                       </div>
+                       <div className="absolute bottom-4 right-4 px-3 py-1 bg-black/60 backdrop-blur-md rounded-full text-[10px] font-black text-white">
+                          {Math.floor(m.duration! / 60)}:{String(m.duration! % 60).padStart(2, '0')}
+                       </div>
+                    </div>
+                  )}
+                  {m.type === 'call' && (
+                    <div className="flex items-center space-x-6 p-6 bg-white/5 rounded-[2.5rem] border border-white/10">
+                       <div className={`p-4 rounded-2xl ${m.text?.includes('Missed') ? 'bg-red-500/20 text-red-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
+                          {m.text?.includes('Video') ? <Video size={28} /> : <Phone size={28} />}
+                       </div>
+                       <div>
+                          <p className="text-lg font-black tracking-tight text-white">{m.text}</p>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Secure Bridge Call</p>
+                       </div>
+                    </div>
+                  )}
                   <div className="flex items-center justify-end space-x-3 mt-4 opacity-30">
                     <span className="text-[10px] font-black uppercase tracking-widest">{new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     {isMe && <CheckCheck size={16} className="text-blue-500" />}
@@ -399,6 +658,9 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
           </div>
           );
         })}
+        {currentThread?.typing && Object.entries(currentThread.typing).some(([uid, typing]) => uid !== authUser?.uid && typing) && (
+          <TypingIndicator />
+        )}
       </div>
 
       {/* Interaction Tray */}
@@ -473,9 +735,46 @@ const Chat: React.FC<ChatProps> = ({ activePartner, onUpdateBalance }) => {
             <button onClick={() => setShowAttachments(!showAttachments)} className={`p-2 transition-all duration-500 ${showAttachments ? 'text-gold rotate-45' : 'text-gray-600 hover:text-gold'}`}><Paperclip size={32} /></button>
             <button onClick={() => setShowEmoji(!showEmoji)} className={`p-2 transition-all duration-500 ${showEmoji ? 'text-gold' : 'text-gray-600 hover:text-gold'}`}><Sparkles size={32} /></button>
             <input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()} placeholder="Transmit message across nodes..." className="flex-1 bg-transparent py-5 text-lg font-medium focus:outline-none placeholder:text-gray-800 tracking-tight text-white" />
+            <button 
+              onMouseDown={() => startRecording('video')}
+              onMouseUp={() => stopRecording()}
+              className="p-2 text-gray-600 hover:text-gold transition-all"
+            >
+              <Video size={32} />
+            </button>
           </div>
-          <button onClick={() => handleSend()} className={`p-8 rounded-full shadow-3xl transition-all active:scale-90 flex items-center justify-center ${inputValue.trim() ? `bg-gradient-to-br ${EKAN_GRADIENT_CSS} text-black` : 'bg-white/5 text-gray-700 border border-white/10'}`}>{inputValue.trim() ? <Send size={32} strokeWidth={3} /> : <Mic size={32} />}</button>
+          <button 
+            onClick={() => handleSend()} 
+            onMouseDown={() => !inputValue.trim() && startRecording('voice')}
+            onMouseUp={() => !inputValue.trim() && stopRecording()}
+            className={`p-8 rounded-full shadow-3xl transition-all active:scale-90 flex items-center justify-center ${inputValue.trim() ? `bg-gradient-to-br ${EKAN_GRADIENT_CSS} text-black` : 'bg-white/5 text-gray-700 border border-white/10'}`}
+          >
+            {inputValue.trim() ? <Send size={32} strokeWidth={3} /> : <Mic size={32} />}
+          </button>
         </div>
+        
+        {/* Recording Overlay */}
+        <AnimatePresence>
+          {isRecording && (
+            <motion.div 
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              className="absolute inset-x-10 bottom-32 bg-red-600 rounded-[3rem] p-8 flex items-center justify-between shadow-3xl z-40"
+            >
+              <div className="flex items-center space-x-6">
+                <div className="w-4 h-4 bg-white rounded-full animate-pulse"></div>
+                <span className="text-[13px] font-black uppercase tracking-[0.4em] text-white">Recording {isRecording} Memo</span>
+              </div>
+              <div className="text-2xl font-black text-white font-mono">
+                {Math.floor(recordingDuration / 60)}:{String(recordingDuration % 60).padStart(2, '0')}
+              </div>
+              <button onClick={() => stopRecording(false)} className="p-4 bg-white/20 rounded-2xl text-white hover:bg-white/30 transition-all">
+                <X size={24} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Bridge Transmission Modal */}

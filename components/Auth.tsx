@@ -45,6 +45,49 @@ const LANGUAGE_OPTIONS = [
   'Vietnamese', 'Thai', 'Dutch', 'Greek', 'Hebrew', 'Indonesian', 'Malay', 'Persian'
 ];
 
+const CONTINENT_DATA: Record<string, { countries: string[]; languages: string[] }> = {
+  'Africa': {
+    countries: [
+      'Algeria', 'Angola', 'Benin', 'Botswana', 'Burkina Faso', 'Burundi', 'Cabo Verde', 'Cameroon', 'Central African Republic', 'Chad', 'Comoros', 'Congo', 'Djibouti', 'Egypt', 'Equatorial Guinea', 'Eritrea', 'Eswatini', 'Ethiopia', 'Gabon', 'Gambia', 'Ghana', 'Guinea', 'Guinea-Bissau', 'Ivory Coast', 'Kenya', 'Lesotho', 'Liberia', 'Libya', 'Madagascar', 'Malawi', 'Mali', 'Mauritania', 'Mauritius', 'Morocco', 'Mozambique', 'Namibia', 'Niger', 'Nigeria', 'Rwanda', 'Sao Tome and Principe', 'Senegal', 'Seychelles', 'Sierra Leone', 'Somalia', 'South Africa', 'South Sudan', 'Sudan', 'Tanzania', 'Togo', 'Tunisia', 'Uganda', 'Zambia', 'Zimbabwe'
+    ],
+    languages: ['English', 'French', 'Arabic', 'Portuguese', 'Swahili', 'Yoruba', 'Igbo', 'Hausa', 'Zulu', 'Amharic', 'Oromo', 'Somali', 'Afrikaans', 'Wolof', 'Twi', 'Lingala', 'Kinyarwanda', 'Shona', 'Ndebele']
+  },
+  'Asia': {
+    countries: [
+      'Afghanistan', 'Armenia', 'Azerbaijan', 'Bahrain', 'Bangladesh', 'Bhutan', 'Brunei', 'Cambodia', 'China', 'Cyprus', 'Georgia', 'India', 'Indonesia', 'Iran', 'Iraq', 'Israel', 'Jordan', 'Kazakhstan', 'Kuwait', 'Kyrgyzstan', 'Laos', 'Lebanon', 'Malaysia', 'Maldives', 'Mongolia', 'Myanmar', 'Nepal', 'North Korea', 'Oman', 'Pakistan', 'Palestine', 'Philippines', 'Qatar', 'Saudi Arabia', 'Singapore', 'South Korea', 'Sri Lanka', 'Syria', 'Taiwan', 'Tajikistan', 'Thailand', 'Timor-Leste', 'Turkey', 'Turkmenistan', 'UAE', 'Uzbekistan', 'Vietnam', 'Yemen'
+    ],
+    languages: ['Mandarin', 'Hindi', 'Japanese', 'Korean', 'Vietnamese', 'Thai', 'Indonesian', 'Malay', 'Bengali', 'Arabic', 'Persian', 'Turkish', 'Hebrew', 'Urdu', 'Tamil', 'Telugu', 'Marathi', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi']
+  },
+  'Europe': {
+    countries: [
+      'Albania', 'Andorra', 'Austria', 'Belarus', 'Belgium', 'Bosnia and Herzegovina', 'Bulgaria', 'Croatia', 'Czech Republic', 'Denmark', 'Estonia', 'Finland', 'France', 'Germany', 'Greece', 'Hungary', 'Iceland', 'Ireland', 'Italy', 'Latvia', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Malta', 'Moldova', 'Monaco', 'Montenegro', 'Netherlands', 'North Macedonia', 'Norway', 'Poland', 'Portugal', 'Romania', 'Russia', 'San Marino', 'Serbia', 'Slovakia', 'Slovenia', 'Spain', 'Sweden', 'Switzerland', 'Ukraine', 'UK', 'Vatican City'
+    ],
+    languages: ['English', 'French', 'German', 'Italian', 'Spanish', 'Dutch', 'Swedish', 'Polish', 'Russian', 'Greek', 'Portuguese', 'Danish', 'Finnish', 'Norwegian', 'Czech', 'Hungarian', 'Romanian', 'Bulgarian', 'Serbian', 'Croatian', 'Slovak', 'Slovenian']
+  },
+  'North America': {
+    countries: [
+      'Antigua and Barbuda', 'Bahamas', 'Barbados', 'Belize', 'Canada', 'Costa Rica', 'Cuba', 'Dominica', 'Dominican Republic', 'El Salvador', 'Grenada', 'Guatemala', 'Haiti', 'Honduras', 'Jamaica', 'Mexico', 'Nicaragua', 'Panama', 'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Vincent and the Grenadines', 'Trinidad and Tobago', 'USA'
+    ],
+    languages: ['English', 'French', 'Spanish', 'Haitian Creole']
+  },
+  'South America': {
+    countries: [
+      'Argentina', 'Bolivia', 'Brazil', 'Chile', 'Colombia', 'Ecuador', 'Guyana', 'Paraguay', 'Peru', 'Suriname', 'Uruguay', 'Venezuela'
+    ],
+    languages: ['Portuguese', 'Spanish', 'Quechua', 'Aymara', 'Guarani']
+  },
+  'Oceania': {
+    countries: [
+      'Australia', 'Fiji', 'Kiribati', 'Marshall Islands', 'Micronesia', 'Nauru', 'New Zealand', 'Palau', 'Papua New Guinea', 'Samoa', 'Solomon Islands', 'Tonga', 'Tuvalu', 'Vanuatu'
+    ],
+    languages: ['English', 'Maori', 'Fijian', 'Tok Pisin', 'Hiri Motu']
+  },
+  'Antarctica': {
+    countries: ['Research Station'],
+    languages: ['English', 'Various']
+  }
+};
+
 const getLocInfo = (countryCode: string) => {
   const data: Record<string, { country: string; continent: string; lang: string; greeting: string }> = {
     'LR': { country: 'Liberia', continent: 'Africa', lang: 'English', greeting: 'Welcome' },
@@ -54,6 +97,12 @@ const getLocInfo = (countryCode: string) => {
     'US': { country: 'USA', continent: 'North America', lang: 'English', greeting: 'Welcome' },
     'FR': { country: 'France', continent: 'Europe', lang: 'French', greeting: 'Bienvenue' },
     'GB': { country: 'UK', continent: 'Europe', lang: 'English', greeting: 'Welcome' },
+    'ZA': { country: 'South Africa', continent: 'Africa', lang: 'English', greeting: 'Sawubona' },
+    'KE': { country: 'Kenya', continent: 'Africa', lang: 'Swahili', greeting: 'Jambo' },
+    'EG': { country: 'Egypt', continent: 'Africa', lang: 'Arabic', greeting: 'Ahlan' },
+    'BR': { country: 'Brazil', continent: 'South America', lang: 'Portuguese', greeting: 'Bem-vindo' },
+    'IN': { country: 'India', continent: 'Asia', lang: 'Hindi', greeting: 'Namaste' },
+    'AU': { country: 'Australia', continent: 'Oceania', lang: 'English', greeting: 'G\'day' },
   };
   return data[countryCode] || { country: 'your country', continent: 'your continent', lang: 'English', greeting: 'Welcome' };
 };
@@ -73,8 +122,24 @@ const Auth: React.FC<AuthProps> = ({ onComplete }) => {
 
   useEffect(() => {
     const detectNode = async () => {
-      // In a real app, we'd use a geolocation API
-      setLocInfo(getLocInfo('GB')); 
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(async (position) => {
+          try {
+            // Using a free reverse geocoding API or just simulating based on coords for now
+            // In a real production app, you'd use a service like ipstack or google maps geocoding
+            const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${position.coords.latitude}&longitude=${position.coords.longitude}&localityLanguage=en`);
+            const data = await res.json();
+            const countryCode = data.countryCode;
+            setLocInfo(getLocInfo(countryCode));
+          } catch (e) {
+            setLocInfo(getLocInfo('GB')); // Fallback
+          }
+        }, () => {
+          setLocInfo(getLocInfo('GB')); // Fallback if denied
+        });
+      } else {
+        setLocInfo(getLocInfo('GB')); 
+      }
     };
     detectNode();
   }, []);
@@ -143,10 +208,6 @@ const Auth: React.FC<AuthProps> = ({ onComplete }) => {
     setStep('setup');
   };
 
-  const handleWeChatLogin = async () => {
-    setStep('setup');
-  };
-
   const toggleInterest = (interest: string) => {
     setSelectedInterests(prev => 
       prev.includes(interest) ? prev.filter(i => i !== interest) : [...prev, interest]
@@ -159,6 +220,16 @@ const Auth: React.FC<AuthProps> = ({ onComplete }) => {
     );
   };
 
+  const [selectedContinent, setSelectedContinent] = useState('Africa');
+  const [selectedCountry, setSelectedCountry] = useState('Nigeria');
+
+  useEffect(() => {
+    if (locInfo.continent && CONTINENT_DATA[locInfo.continent]) {
+      setSelectedContinent(locInfo.continent);
+      setSelectedCountry(locInfo.country);
+    }
+  }, [locInfo]);
+
   const finalize = () => {
     setStep('success');
     setTimeout(() => {
@@ -166,7 +237,7 @@ const Auth: React.FC<AuthProps> = ({ onComplete }) => {
         name: name || email.split('@')[0] || phoneNumber, 
         email, 
         interests: selectedInterests,
-        location: `${locInfo.country}, ${locInfo.continent}`,
+        location: `${selectedCountry}, ${selectedContinent}`,
         nativeLanguage,
         learningLanguages
       });
@@ -232,10 +303,6 @@ const Auth: React.FC<AuthProps> = ({ onComplete }) => {
               </div>
               
               <div className="grid grid-cols-2 gap-4">
-                <button onClick={handleGoogleLogin} className="py-5 bg-white/5 border border-white/10 rounded-[2rem] flex items-center justify-center space-x-4 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all group">
-                  <Mail size={18} className="text-red-500 group-hover:scale-125 transition-transform" />
-                  <span>Google</span>
-                </button>
                 <button onClick={() => setStep('email')} className="py-5 bg-white/5 border border-white/10 rounded-[2rem] flex items-center justify-center space-x-4 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all group">
                   <Mail size={18} className="text-emerald-500 group-hover:scale-125 transition-transform" />
                   <span>Email</span>
@@ -243,10 +310,6 @@ const Auth: React.FC<AuthProps> = ({ onComplete }) => {
                 <button onClick={() => setStep('phone')} className="py-5 bg-white/5 border border-white/10 rounded-[2rem] flex items-center justify-center space-x-4 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all group">
                   <Smartphone size={18} className="text-blue-500 group-hover:scale-125 transition-transform" />
                   <span>Phone</span>
-                </button>
-                <button onClick={handleWeChatLogin} className="py-5 bg-white/5 border border-white/10 rounded-[2rem] flex items-center justify-center space-x-4 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all group">
-                  <MessageCircle size={18} className="text-green-500 group-hover:scale-125 transition-transform" />
-                  <span>WeChat</span>
                 </button>
               </div>
             </div>
@@ -340,6 +403,55 @@ const Auth: React.FC<AuthProps> = ({ onComplete }) => {
                   placeholder="GRID IDENTIFIER"
                   className="w-full bg-white/[0.03] border border-white/10 rounded-[2.5rem] py-8 pl-20 pr-10 text-base font-black tracking-widest focus:outline-none focus:border-gold/50 transition-all placeholder:text-gray-900 shadow-inner"
                 />
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center space-x-4 px-6">
+                  <Globe size={18} className="text-gold" />
+                  <p className="text-[11px] font-black uppercase tracking-[0.6em] text-gray-600">Grid Node (Continent)</p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {Object.keys(CONTINENT_DATA).map(cont => (
+                    <button
+                      key={cont}
+                      onClick={() => {
+                        setSelectedContinent(cont);
+                        setSelectedCountry(CONTINENT_DATA[cont].countries[0]);
+                      }}
+                      className={`px-8 py-4 rounded-[1.8rem] text-[11px] font-black uppercase tracking-widest border transition-all duration-500 ${
+                        selectedContinent === cont 
+                        ? 'bg-emerald-600 border-emerald-600 text-white shadow-[0_15px_40px_rgba(16,185,129,0.3)]' 
+                        : 'bg-white/5 border-white/10 text-gray-500 hover:border-white/30'
+                      }`}
+                    >
+                      {cont}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center space-x-4 px-6">
+                  <ShieldCheck size={18} className="text-gold" />
+                  <p className="text-[11px] font-black uppercase tracking-[0.6em] text-gray-600">Specific Node (Country)</p>
+                </div>
+                <select 
+                  value={selectedCountry}
+                  onChange={(e) => setSelectedCountry(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-[1.8rem] py-4 px-8 text-[11px] font-black uppercase tracking-widest text-gray-400 focus:outline-none focus:border-gold/50 appearance-none cursor-pointer"
+                >
+                  {CONTINENT_DATA[selectedContinent].countries.map(country => (
+                    <option key={country} value={country} className="bg-[#111]">{country}</option>
+                  ))}
+                </select>
+                <div className="px-6 flex items-center space-x-2">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-700">Primary Frequencies:</span>
+                  <div className="flex flex-wrap gap-2">
+                    {CONTINENT_DATA[selectedContinent].languages.slice(0, 5).map(l => (
+                      <span key={l} className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest">{l}</span>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-6">

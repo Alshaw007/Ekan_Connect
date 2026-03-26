@@ -128,7 +128,7 @@ const LiveStreamComponent: React.FC<LiveStreamProps> = ({ profile }) => {
 
   const handleSendGift = async (gift: Gift) => {
     if (!activeStream || !profile || profile.balance < gift.price) {
-      alert('Insufficient balance');
+      console.warn('Insufficient balance');
       return;
     }
     try {
