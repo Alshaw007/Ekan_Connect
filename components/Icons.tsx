@@ -12,6 +12,7 @@ import {
   Send, 
   Mic, 
   MoreHorizontal,
+  MoreVertical,
   ChevronRight,
   ChevronLeft,
   Plus,
@@ -28,6 +29,7 @@ import {
   ArrowRight,
   Mail,
   Lock,
+  Key,
   CheckCheck,
   Video,
   FileText,
@@ -63,7 +65,9 @@ import {
   Monitor,
   Ban,
   VideoOff,
-  Volume2
+  Volume2,
+  Link2,
+  Clock
 } from 'lucide-react';
 
 export {
@@ -78,6 +82,7 @@ export {
   Send, 
   Mic, 
   MoreHorizontal,
+  MoreVertical,
   ChevronRight,
   ChevronLeft,
   Plus, 
@@ -94,6 +99,7 @@ export {
   ArrowRight,
   Mail,
   Lock,
+  Key,
   CheckCheck,
   Video,
   FileText,
@@ -129,5 +135,7 @@ export {
   Monitor,
   Ban,
   VideoOff,
-  Volume2
+  Volume2,
+  Link2,
+  Clock
 };

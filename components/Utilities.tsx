@@ -11,20 +11,17 @@ import {
   CheckCircle2, 
   DollarSign, 
   Globe,
-  Search
+  Search,
+  Smartphone
 } from './Icons';
 import { EKAN_GRADIENT_CSS } from '../constants';
 import { useFirebase } from './FirebaseProvider';
 
 interface UtilityItem {
+  id: string;
   name: string;
-  type: string;
-}
-
-interface UtilityData {
-  electricity: UtilityItem[];
-  water: UtilityItem[];
-  transport: UtilityItem[];
+  provider: string;
+  category: string;
 }
 
 interface UtilitiesProps {
@@ -32,200 +29,150 @@ interface UtilitiesProps {
   onProcessPayment: (amount: number, description: string) => void;
 }
 
+const UTILITY_CATEGORIES = [
+  { id: 'electricity', name: 'Electricity', icon: <Zap size={24} /> },
+  { id: 'water', name: 'Water', icon: <Droplets size={24} /> },
+  { id: 'transport', name: 'Transport', icon: <Bus size={24} /> },
+  { id: 'airtime', name: 'Airtime', icon: <Smartphone size={24} /> },
+];
+
+const MOCK_SERVICES: UtilityItem[] = [
+  { id: '1', name: 'LEC Prepaid', provider: 'Liberia Electricity Corp', category: 'electricity' },
+  { id: '2', name: 'LWSC Bill', provider: 'Liberia Water & Sewer Corp', category: 'water' },
+  { id: '3', name: 'Orange Airtime', provider: 'Orange Liberia', category: 'airtime' },
+  { id: '4', name: 'Lonestar Airtime', provider: 'Lonestar MTN', category: 'airtime' },
+  { id: '5', name: 'National Transit', provider: 'NTA Liberia', category: 'transport' },
+];
+
 const Utilities: React.FC<UtilitiesProps> = ({ balance, onProcessPayment }) => {
   const { profile } = useFirebase();
-  const [data, setData] = useState<UtilityData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedItem, setSelectedItem] = useState<{ item: UtilityItem; category: string } | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedService, setSelectedService] = useState<UtilityItem | null>(null);
   const [amount, setAmount] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  useEffect(() => {
-    const country = profile?.location?.split(',').pop()?.trim() || "Liberia";
-    fetch(`/api/utilities?country=${encodeURIComponent(country)}`)
-      .then(res => res.json())
-      .then(setData)
-      .finally(() => setLoading(false));
-  }, [profile]);
-
   const handlePayment = () => {
     const amt = parseFloat(amount);
-    if (!selectedItem || isNaN(amt) || amt <= 0 || amt > balance || !accountNumber) return;
+    if (!selectedService || isNaN(amt) || amt <= 0 || amt > balance || !accountNumber) return;
 
     setIsProcessing(true);
     setTimeout(() => {
-      onProcessPayment(amt, `Utility: ${selectedItem.item.name} (${accountNumber})`);
+      onProcessPayment(amt, `Utility: ${selectedService.name} (${accountNumber})`);
       setIsProcessing(false);
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
-        setSelectedItem(null);
+        setSelectedService(null);
         setAmount('');
         setAccountNumber('');
       }, 3000);
     }, 2000);
   };
 
-  if (loading) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-8 space-y-12 animate-in fade-in duration-1000 pb-28 h-full overflow-y-auto scrollbar-hide">
-      <div className="space-y-4">
-        <h1 className="text-5xl font-black tracking-tighter text-white">Grid Utilities</h1>
-        <p className="text-[11px] text-gray-500 font-black uppercase tracking-[0.5em]">Global Infrastructure Interface</p>
+    <div className="flex flex-col h-full bg-[#F0F2F5] dark:bg-[#111b21] overflow-hidden pb-20">
+      {/* Header */}
+      <div className="bg-brand-navy p-6 text-white">
+        <h1 className="text-2xl font-bold">Utilities</h1>
+        <p className="text-xs text-brand-green font-bold uppercase tracking-widest mt-1">Pay bills & services</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Electricity */}
-        <div className="space-y-6">
-          <div className="flex items-center space-x-4 px-4">
-            <Zap size={24} className="text-gold" />
-            <h3 className="text-[13px] font-black uppercase tracking-[0.4em] text-white">Power Grid</h3>
-          </div>
-          <div className="space-y-4">
-            {data?.electricity.map(item => (
-              <button 
-                key={item.name}
-                onClick={() => setSelectedItem({ item, category: 'Electricity' })}
-                className="w-full flex items-center justify-between p-8 bg-white/5 border border-white/10 rounded-[3rem] hover:bg-white/10 transition-all group"
-              >
-                <div className="text-left">
-                  <p className="font-black text-xl tracking-tight text-white">{item.name}</p>
-                  <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mt-1">{item.type}</p>
-                </div>
-                <ChevronRight size={24} className="text-gray-700 group-hover:text-gold transition-colors" />
-              </button>
-            ))}
-          </div>
+      <div className="flex-1 overflow-y-auto scrollbar-hide">
+        {/* Categories Grid */}
+        <div className="p-4 grid grid-cols-4 gap-2">
+          {UTILITY_CATEGORIES.map(cat => (
+            <button 
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id === selectedCategory ? null : cat.id)}
+              className={`flex flex-col items-center p-3 rounded-xl transition-all ${selectedCategory === cat.id ? 'bg-brand-green text-white shadow-lg' : 'bg-white dark:bg-[#202c33] text-slate-600 dark:text-[#e9edef] hover:bg-slate-50 dark:hover:bg-[#182229]'}`}
+            >
+              <div className="mb-1">{cat.icon}</div>
+              <span className="text-[8px] font-bold uppercase tracking-widest text-center">{cat.name}</span>
+            </button>
+          ))}
         </div>
 
-        {/* Water */}
-        <div className="space-y-6">
-          <div className="flex items-center space-x-4 px-4">
-            <Droplets size={24} className="text-blue-400" />
-            <h3 className="text-[13px] font-black uppercase tracking-[0.4em] text-white">Water Supply</h3>
+        {/* Services List */}
+        <div className="mt-2 bg-white dark:bg-[#202c33] border-y border-slate-200 dark:border-slate-700">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700/50">
+            <h3 className="text-sm font-bold text-slate-500 dark:text-[#8696a0] uppercase tracking-widest">
+              {selectedCategory ? UTILITY_CATEGORIES.find(c => c.id === selectedCategory)?.name : 'All Services'}
+            </h3>
           </div>
-          <div className="space-y-4">
-            {data?.water.map(item => (
-              <button 
-                key={item.name}
-                onClick={() => setSelectedItem({ item, category: 'Water' })}
-                className="w-full flex items-center justify-between p-8 bg-white/5 border border-white/10 rounded-[3rem] hover:bg-white/10 transition-all group"
-              >
-                <div className="text-left">
-                  <p className="font-black text-xl tracking-tight text-white">{item.name}</p>
-                  <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mt-1">{item.type}</p>
+          
+          <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
+            {MOCK_SERVICES
+              .filter(s => !selectedCategory || s.category === selectedCategory)
+              .map(service => (
+                <div 
+                  key={service.id} 
+                  onClick={() => setSelectedService(service)}
+                  className="flex items-center px-6 py-4 hover:bg-slate-50 dark:hover:bg-[#182229] cursor-pointer group"
+                >
+                  <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-[#2a3942] flex items-center justify-center text-brand-navy dark:text-brand-green">
+                    {UTILITY_CATEGORIES.find(c => c.id === service.category)?.icon}
+                  </div>
+                  <div className="ml-4 flex-1">
+                    <p className="text-sm font-bold dark:text-[#e9edef]">{service.name}</p>
+                    <p className="text-[10px] text-slate-500 dark:text-[#8696a0] uppercase tracking-widest mt-0.5">{service.provider}</p>
+                  </div>
+                  <ChevronRight size={18} className="text-slate-300 group-hover:text-brand-green transition-colors" />
                 </div>
-                <ChevronRight size={24} className="text-gray-700 group-hover:text-gold transition-colors" />
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Transport */}
-        <div className="space-y-6 md:col-span-2">
-          <div className="flex items-center space-x-4 px-4">
-            <Bus size={24} className="text-emerald-500" />
-            <h3 className="text-[13px] font-black uppercase tracking-[0.4em] text-white">Mobility & Transit</h3>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {data?.transport.map(item => (
-              <button 
-                key={item.name}
-                onClick={() => setSelectedItem({ item, category: 'Transport' })}
-                className="flex items-center justify-between p-8 bg-white/5 border border-white/10 rounded-[3rem] hover:bg-white/10 transition-all group"
-              >
-                <div className="flex items-center space-x-6">
-                   <div className="p-4 bg-white/5 rounded-2xl text-emerald-500">
-                     {item.type.includes('Rail') ? <Train size={28} /> : item.type.includes('Airline') ? <Plane size={28} /> : <Bus size={28} />}
-                   </div>
-                   <div className="text-left">
-                     <p className="font-black text-xl tracking-tight text-white">{item.name}</p>
-                     <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mt-1">{item.type}</p>
-                   </div>
-                </div>
-                <ChevronRight size={24} className="text-gray-700 group-hover:text-gold transition-colors" />
-              </button>
-            ))}
+              ))}
           </div>
         </div>
       </div>
 
       {/* Payment Modal */}
-      {selectedItem && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-8 bg-black/98 backdrop-blur-3xl animate-in fade-in duration-500">
-          <div className="relative w-full max-w-md bg-[#0a0a0a] border border-white/10 rounded-[5rem] p-12 shadow-3xl space-y-12">
-            <button onClick={() => setSelectedItem(null)} className="absolute top-12 right-12 p-4 bg-white/5 rounded-full text-gray-500 hover:text-white transition-all"><X size={32} /></button>
-            
-            <div className="text-center space-y-4">
-              <div className="w-24 h-24 bg-gold/10 rounded-[2.5rem] mx-auto flex items-center justify-center text-gold shadow-2xl border border-gold/20">
-                <DollarSign size={48} />
-              </div>
-              <h3 className="text-4xl font-black tracking-tighter text-white">{selectedItem.category} Payment</h3>
-              <p className="text-[11px] text-gray-500 font-black uppercase tracking-[0.4em]">{selectedItem.item.name}</p>
+      {selectedService && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-[#233138] w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-brand-navy text-white">
+              <h3 className="font-bold">Pay {selectedService.name}</h3>
+              <button onClick={() => setSelectedService(null)}><X size={20} /></button>
             </div>
-
-            {success ? (
-              <div className="py-12 flex flex-col items-center space-y-6 animate-in zoom-in-95">
-                <div className="w-24 h-24 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center shadow-xl shadow-emerald-500/10">
-                  <CheckCircle2 size={48} />
+            
+            <div className="p-6 space-y-6">
+              {success ? (
+                <div className="text-center py-8 space-y-4 animate-in zoom-in-95">
+                  <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+                    <CheckCircle2 size={32} />
+                  </div>
+                  <p className="text-sm font-bold text-emerald-600">Payment Successful</p>
                 </div>
-                <p className="text-center text-sm font-black uppercase tracking-widest text-emerald-400 leading-loose">Transmission Successful</p>
-              </div>
-            ) : (
-              <div className="space-y-8">
-                <div className="space-y-4">
-                  <label className="text-[11px] font-black uppercase tracking-[0.6em] text-gray-600 px-6">Account / Meter Number</label>
-                  <div className="relative">
-                    <Search size={24} className="absolute left-8 top-1/2 -translate-y-1/2 text-gray-700" />
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Account Number</label>
                     <input 
-                      type="text" 
-                      placeholder="ENTER ID..."
+                      type="text"
+                      placeholder="Enter ID or Account #"
                       value={accountNumber}
                       onChange={(e) => setAccountNumber(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-[2.2rem] py-7 pl-18 pr-8 text-xl font-black tracking-[0.2em] focus:outline-none focus:border-gold/50 transition-all placeholder:text-gray-900 text-white"
+                      className="w-full bg-slate-50 dark:bg-[#2a3942] border-none rounded-xl py-4 px-4 text-sm focus:ring-2 focus:ring-brand-green dark:text-white"
                     />
                   </div>
-                </div>
-
-                <div className="space-y-4">
-                  <label className="text-[11px] font-black uppercase tracking-[0.6em] text-gray-600 px-6">Transmission Value</label>
-                  <div className="relative">
-                    <DollarSign size={24} className="absolute left-8 top-1/2 -translate-y-1/2 text-gold" />
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Amount ($)</label>
                     <input 
-                      type="number" 
+                      type="number"
                       placeholder="0.00"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-[2.2rem] py-8 pl-18 pr-8 text-4xl font-black text-white focus:outline-none focus:border-gold/50 transition-all placeholder:text-gray-900 tracking-tighter"
+                      className="w-full bg-slate-50 dark:bg-[#2a3942] border-none rounded-xl py-4 px-4 text-2xl font-bold focus:ring-2 focus:ring-brand-green dark:text-white"
                     />
                   </div>
-                </div>
-
-                <button 
-                  onClick={handlePayment}
-                  disabled={isProcessing || !amount || !accountNumber || parseFloat(amount) > balance}
-                  className={`w-full py-8 bg-gradient-to-r ${EKAN_GRADIENT_CSS} text-black rounded-[2.8rem] font-black text-xs uppercase tracking-[0.4em] shadow-3xl active:scale-95 disabled:opacity-20 transition-all flex items-center justify-center space-x-3`}
-                >
-                  {isProcessing ? <span>Bridging Protocol...</span> : <span>Authorize Payment</span>}
-                  {!isProcessing && <ChevronRight size={24} />}
-                </button>
-              </div>
-            )}
-            
-            <div className="flex justify-center">
-              <div className="flex items-center space-x-3 bg-white/[0.01] px-6 py-3 rounded-full border border-white/5">
-                <ShieldCheck size={16} className="text-emerald-500" />
-                <span className="text-[10px] font-black uppercase tracking-[0.5em] text-gray-700">Safe-Grid Protocol Active</span>
-              </div>
+                  <button 
+                    onClick={handlePayment}
+                    disabled={isProcessing || !accountNumber || !amount || parseFloat(amount) > balance}
+                    className="w-full py-4 bg-brand-green text-white rounded-xl font-bold text-sm uppercase tracking-widest shadow-lg active:scale-95 disabled:opacity-50 transition-all"
+                  >
+                    {isProcessing ? 'Processing...' : 'Confirm Payment'}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

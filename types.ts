@@ -184,6 +184,8 @@ export interface Event {
   price?: number;
   hasGroupChat?: boolean;
   isTicketed?: boolean;
+  time?: string;
+  category?: string;
 }
 
 export interface LocalizationData {
